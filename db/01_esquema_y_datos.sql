@@ -74,6 +74,7 @@ CREATE TABLE transferencia (
     monto DECIMAL(15,2) NOT NULL,
     tipo ENUM('SINPE_MOVIL','IBAN') NOT NULL,
     fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    detalle VARCHAR(100) NULL,
     CONSTRAINT fk_transferencia_origen FOREIGN KEY (id_cuenta_origen) REFERENCES cuenta_iban(id_cuenta),
     CONSTRAINT fk_transferencia_destino FOREIGN KEY (id_cuenta_destino) REFERENCES cuenta_iban(id_cuenta)
 );

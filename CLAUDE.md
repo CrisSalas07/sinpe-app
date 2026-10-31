@@ -16,9 +16,10 @@ db/
 ├── 03_procedimientos.sql
 ├── 05_app_user.sql             # documentation only: CREATE USER sinpe_app + GRANT (example password)
 ├── 06_backfill_historial.sql   # one AFILIACION event per seed enrollment; idempotent; run as root
-└── 07_detalle_transferencia.sql # transferencia.detalle + p_detalle in both transfer SPs; run once as root
+└── 07_detalle_transferencia.sql # ONLY for databases created before detalle was in 01: ALTER + new transfer SPs
 ```
 - The folder was renamed from `BD/` to `db/` in Phase 1. `04_pruebas.sql` is omitted for now.
+- **Fresh install order (as root): 01 → 02 → 03 → 05 → 06.** 01 already has `transferencia.detalle` and 03 already has the transfer procedures with `p_detalle`, so 07 is not needed. 06 is needed because the seed enrollments in 01 are inserted before the triggers in 02 exist.
 - The database `sinpe_movil` is created and loaded (scripts 01–03 were run).
 - The seed enrollments in 01 were inserted before the triggers in 02 existed, so `historial_afiliacion` starts empty until Cristopher runs `06_backfill_historial.sql` as root.
 - The MySQL user **`sinpe_app`@`localhost`** (`GRANT SELECT, EXECUTE ON sinpe_movil.*`) is created by Cristopher as root, and `.env` connects with it. Do not ask him to run `05_app_user.sql` again.
@@ -297,7 +298,7 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 | 06 Historial | `GET /api/reports/movements?iban=&from=&to=` · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
 
 **Transfer detail ("Detalle (opcional)"):**
-- `db/07_detalle_transferencia.sql` adds `transferencia.detalle VARCHAR(100) NULL` and a 4th parameter `p_detalle` to `sp_transferir_sinpe` and `sp_transferir_iban` (pass NULL when empty). `03_procedimientos.sql` has the same procedure versions. Cristopher runs 07 as root before Phase 7.
+- `transferencia.detalle VARCHAR(100) NULL` is in `01`. `sp_transferir_sinpe` and `sp_transferir_iban` in `03` take a 4th parameter `p_detalle` (pass NULL when empty). `db/07_detalle_transferencia.sql` upgrades databases created before this change; Cristopher runs it once as root before Phase 7.
 - Show the detail in Revisión, Comprobante and Historial only where the Figma has a place for it.
 
 **Transfer flow:**
@@ -347,7 +348,7 @@ APP_PASSWORD_HASH=
    - Theme toggle saved in `localStorage` (done in Phase 3: `js/theme.js` applies it in `<head>` before paint).
    - Screen-by-screen check against Figma.
    - Security self-review against sections 5 and 6.
-   - `README.md` in English: setup, scripts, architecture, security notes.
+   - `README.md` in English: setup (fresh DB install order 01 → 02 → 03 → 05 → 06), scripts, architecture, security notes.
 
 ## 12. Phase report format (in Spanish)
 

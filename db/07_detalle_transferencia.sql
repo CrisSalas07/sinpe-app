@@ -1,5 +1,7 @@
+-- ONLY for databases created before transferencia.detalle was added to 01_esquema_y_datos.sql.
+-- A fresh install (01 -> 02 -> 03 -> 05 -> 06) already has the column and these procedures: do not run this.
 -- Adds an optional detail ("Detalle (opcional)" in the transfer form) to every transfer.
--- Run ONCE as root, after 01-03 and before Phase 7. Running the ALTER twice fails (duplicate column).
+-- Run ONCE as root. Running the ALTER twice fails (duplicate column).
 -- The procedures below are identical to the ones in 03_procedimientos.sql.
 -- The new p_detalle parameter is required by MySQL; pass NULL when there is no detail.
 USE sinpe_movil;
