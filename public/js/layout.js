@@ -31,9 +31,15 @@ function buildHeader(activePage) {
     ),
   );
 
+  const isDark = document.documentElement.dataset.theme === 'dark';
   const themeButton = el(
     'button',
-    { type: 'button', class: 'icon-btn', 'aria-label': 'Cambiar tema', 'aria-pressed': 'false' },
+    {
+      type: 'button',
+      class: 'icon-btn',
+      'aria-label': 'Cambiar tema',
+      'aria-pressed': String(isDark),
+    },
     icon('sun'),
   );
   themeButton.addEventListener('click', () => toggleTheme(themeButton));
@@ -76,6 +82,11 @@ function toggleTheme(button) {
   const dark = root.dataset.theme !== 'dark';
   root.dataset.theme = dark ? 'dark' : 'light';
   button.setAttribute('aria-pressed', String(dark));
+  try {
+    localStorage.setItem('theme', root.dataset.theme);
+  } catch {
+    // Storage blocked: the theme just won't be remembered.
+  }
 }
 
 // Only leaves the page once the server confirms the session is destroyed.

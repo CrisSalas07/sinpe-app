@@ -207,14 +207,10 @@ select {
   margin-top: 18px;
 }
 
+/* Section titles ("Listado", "Movimientos de una cuenta") are Instrument Sans Bold in the PNGs. */
 .section-title {
-  font-family: var(--font-head);
   font-weight: 700;
-  font-size: 20px;
-}
-
-.section-title-lg {
-  font-size: 24px;
+  font-size: 19px;
 }
 
 /* Stats panel inside the hero */
