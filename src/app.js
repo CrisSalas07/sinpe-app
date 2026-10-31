@@ -5,7 +5,9 @@ import helmet from 'helmet';
 import { env } from './config/env.js';
 import { requireAuth } from './middlewares/auth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { accountsRoutes } from './routes/accounts.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
+import { catalogsRoutes } from './routes/catalogs.routes.js';
 import { clientsRoutes } from './routes/clients.routes.js';
 
 const SESSION_IDLE_MS = 15 * 60 * 1000;
@@ -63,6 +65,8 @@ app.use(express.static(path.join(import.meta.dirname, '..', 'public')));
 app.use('/api/auth', authRoutes);
 app.use('/api', requireAuth);
 app.use('/api/clients', clientsRoutes);
+app.use('/api/accounts', accountsRoutes);
+app.use('/api/catalogs', catalogsRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
 
 app.use(errorHandler);

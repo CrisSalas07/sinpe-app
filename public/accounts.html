@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cuentas IBAN · JUNTAUCR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap"
+    />
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script type="module" src="/js/accounts.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <!-- 03 Cuentas IBAN -->
+      <div id="list-view">
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Cuentas IBAN</h1>
+            <p class="page-sub">Cuentas de los clientes, por entidad y moneda.</p>
+            <a class="btn btn-primary" href="#registrar">Registrar cuenta</a>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-value" id="stat-total"></div>
+              <div class="stat-label">Cuentas</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-active"></div>
+              <div class="stat-label">Activas</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-crc"></div>
+              <div class="stat-label">En colones</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head">
+          <h2 class="section-title">Listado</h2>
+          <input
+            class="input search"
+            id="search"
+            type="search"
+            placeholder="Buscar en la lista"
+            aria-label="Buscar en la lista"
+          />
+        </div>
+        <div id="list-alert" class="alert alert-bad" role="alert" hidden></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>IBAN</th>
+                <th>Titular</th>
+                <th>Entidad</th>
+                <th>Moneda</th>
+                <th>Saldo</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 09 Registrar cuenta IBAN -->
+      <div id="form-view" hidden>
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Registrar cuenta IBAN</h1>
+            <p class="page-sub">Cuenta a nombre de un cliente, por entidad y moneda.</p>
+          </div>
+        </section>
+
+        <form id="account-form" class="card form-col">
+          <div id="form-alert" class="alert alert-bad" role="alert" hidden></div>
+
+          <div class="field">
+            <label class="label" for="clientId">Titular</label>
+            <select
+              class="select"
+              id="clientId"
+              name="clientId"
+              required
+              aria-describedby="clientId-error"
+            ></select>
+            <p class="field-error" id="clientId-error" hidden></p>
+          </div>
+
+          <div class="row-2">
+            <div class="field">
+              <label class="label" for="bankId">Entidad financiera</label>
+              <select
+                class="select"
+                id="bankId"
+                name="bankId"
+                required
+                aria-describedby="bankId-error"
+              ></select>
+              <p class="field-error" id="bankId-error" hidden></p>
+            </div>
+            <div class="field">
+              <label class="label" for="currency">Moneda</label>
+              <select
+                class="select"
+                id="currency"
+                name="currency"
+                required
+                aria-describedby="currency-error"
+              ></select>
+              <p class="field-error" id="currency-error" hidden></p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="iban">IBAN</label>
+            <input
+              class="input"
+              id="iban"
+              name="iban"
+              minlength="22"
+              maxlength="22"
+              pattern="CR[0-9]{20}"
+              autocomplete="off"
+              spellcheck="false"
+              required
+              aria-describedby="iban-help iban-error"
+            />
+            <p class="help" id="iban-help">Exactamente 22 caracteres. No puede repetirse.</p>
+            <p class="field-error" id="iban-error" hidden></p>
+          </div>
+
+          <div class="row-2">
+            <div class="field">
+              <label class="label" for="balance">Saldo inicial</label>
+              <input
+                class="input"
+                id="balance"
+                name="balance"
+                inputmode="decimal"
+                pattern="[0-9]{1,13}([.][0-9]{1,2})?"
+                autocomplete="off"
+                required
+                aria-describedby="balance-help balance-error"
+              />
+              <p class="help" id="balance-help">No se permiten saldos negativos.</p>
+              <p class="field-error" id="balance-error" hidden></p>
+            </div>
+            <div class="field">
+              <label class="label" for="openedAt">Fecha de apertura</label>
+              <input
+                class="input"
+                id="openedAt"
+                name="openedAt"
+                type="date"
+                required
+                aria-describedby="openedAt-error"
+              />
+              <p class="field-error" id="openedAt-error" hidden></p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="status">Estado</label>
+            <select
+              class="select"
+              id="status"
+              name="status"
+              aria-describedby="status-help status-error"
+            >
+              <option value="ACTIVA">ACTIVA</option>
+              <option value="INACTIVA">INACTIVA</option>
+              <option value="BLOQUEADA">BLOQUEADA</option>
+            </select>
+            <p class="help" id="status-help">ACTIVA, INACTIVA o BLOQUEADA.</p>
+            <p class="field-error" id="status-error" hidden></p>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn btn-secondary" href="#">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Guardar cuenta</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

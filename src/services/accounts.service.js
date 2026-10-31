@@ -1,0 +1,28 @@
+import * as accountsRepository from '../repositories/accounts.repository.js';
+import { ValidationError } from '../utils/errors.js';
+
+// sp_registrar_cuenta messages that belong to one form field, so the form can highlight it.
+// The message itself is shown unchanged.
+const SP_MESSAGE_FIELDS = {
+  'El IBAN ya esta registrado': 'iban',
+  'El cliente no existe': 'clientId',
+  'El cliente esta inactivo': 'clientId',
+  'La entidad financiera no existe': 'bankId',
+  'La moneda no existe en el catalogo': 'currency',
+};
+
+export const list = () => accountsRepository.findAll();
+
+export const stats = () => accountsRepository.getStats();
+
+/** Registers through the stored procedure and returns the account as stored in the database. */
+export async function register(account) {
+  try {
+    await accountsRepository.create(account);
+  } catch (err) {
+    const field = err.sqlState === '45000' && SP_MESSAGE_FIELDS[err.sqlMessage];
+    if (field) throw new ValidationError(err.sqlMessage, field);
+    throw err;
+  }
+  return accountsRepository.findByIban(account.iban);
+}
