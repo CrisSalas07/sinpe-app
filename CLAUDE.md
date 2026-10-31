@@ -301,7 +301,9 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 
 **Transfer detail ("Detalle (opcional)"):**
 - `transferencia.detalle VARCHAR(100) NULL` is in `01`. `sp_transferir_sinpe` and `sp_transferir_iban` in `03` take a 4th parameter `p_detalle` (pass NULL when empty).
-- Show the detail in Revisión, Comprobante and Historial only where the Figma has a place for it. As of Phase 7 the Figma has no place in Revisión or Comprobante, so it is stored but not shown there.
+- Revisión and Comprobante show a "Detalle" row **only when the user wrote a detail** (Cristopher's decision); with an empty detail they look exactly like the Figma. In Historial, show it only if there is a natural place; otherwise ask.
+
+**Known limitation (for the README in Phase 9):** with two transfers confirmed at the same time on the same accounts, the money is always correct (the procedures lock both accounts with `FOR UPDATE` and run in a transaction). Only the receipt can be affected: its "after" balances are read right after the `CALL` without a lock, so they may already include the other transfer, and the "before" values (after ∓ amount) would be off by that amount.
 
 **Transfer flow:**
 - **Step 1 → 2 (Revisión)** is frontend-only: it checks **formats only** (destination 8 digits / IBAN pattern, amount `^\d{1,13}(\.\d{1,2})?$` and > 0 with the Figma text "El monto debe ser mayor que cero.") and shows the data and the "saldo del origen después" (integer cents).

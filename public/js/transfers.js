@@ -267,18 +267,18 @@ function onReview(event) {
       ? `${formatPhone(fields.originNumber.value)} · ${holderOf(origin)}`
       : `${shortIban(origin.iban)} · ${holderOf(origin)}`;
 
-  document
-    .getElementById('review-rows')
-    .replaceChildren(
-      kvRow(type === 'sinpe' ? 'Teléfono de origen' : 'Cuenta de origen', originText),
-      kvRow('Destino', destinationText.filter(Boolean).join(' · ')),
-      kvRow('Monto', formatMoney(amount, origin.currency)),
-      kvRow(
-        'Saldo del origen después',
-        formatMoney(fromCents(toCents(origin.balance) - toCents(amount)), origin.currency),
-      ),
-      kvRow('Tipo', type === 'sinpe' ? 'SINPE Móvil' : 'IBAN'),
-    );
+  document.getElementById('review-rows').replaceChildren(
+    kvRow(type === 'sinpe' ? 'Teléfono de origen' : 'Cuenta de origen', originText),
+    kvRow('Destino', destinationText.filter(Boolean).join(' · ')),
+    kvRow('Monto', formatMoney(amount, origin.currency)),
+    // Only when the user wrote one, so an empty detail looks exactly like the Figma.
+    ...detailRow(fields.detail.value.trim()),
+    kvRow(
+      'Saldo del origen después',
+      formatMoney(fromCents(toCents(origin.balance) - toCents(amount)), origin.currency),
+    ),
+    kvRow('Tipo', type === 'sinpe' ? 'SINPE Móvil' : 'IBAN'),
+  );
   setStep(2);
 }
 
@@ -292,6 +292,11 @@ function holderOf(account) {
 
 function kvRow(label, value) {
   return el('div', { class: 'kv-row' }, el('dt', {}, label), el('dd', {}, value));
+}
+
+/** [] when there is no detail, so it can be spread into a list of rows. */
+function detailRow(detail) {
+  return detail ? [kvRow('Detalle', detail)] : [];
 }
 
 // ---------- Step 2 → 3: the database executes and validates the transfer ----------
@@ -349,6 +354,7 @@ function showReceipt(result) {
     .getElementById('receipt-rows')
     .replaceChildren(
       kvRow('Monto', money(result.amount)),
+      ...detailRow(result.detail),
       kvRow(
         'Origen, antes → después',
         `${money(result.originBefore)} → ${money(result.originAfter)}`,
