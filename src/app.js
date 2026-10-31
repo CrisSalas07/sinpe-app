@@ -10,6 +10,7 @@ import { authRoutes } from './routes/auth.routes.js';
 import { catalogsRoutes } from './routes/catalogs.routes.js';
 import { clientsRoutes } from './routes/clients.routes.js';
 import { phonesRoutes } from './routes/phones.routes.js';
+import { reportsRoutes } from './routes/reports.routes.js';
 import { sinpeRoutes } from './routes/sinpe.routes.js';
 import { transfersRoutes } from './routes/transfers.routes.js';
 
@@ -73,6 +74,7 @@ app.use('/api/catalogs', catalogsRoutes);
 app.use('/api/phones', phonesRoutes);
 app.use('/api/sinpe', sinpeRoutes);
 app.use('/api/transfers', transfersRoutes);
+app.use('/api/reports', reportsRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
 
 app.use(errorHandler);

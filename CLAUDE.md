@@ -297,11 +297,11 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 | 04 Teléfonos | `GET /api/phones` (enrolled flag + account) · `GET /api/phones/stats` (total, enrolled, not enrolled) · `POST /api/phones` · `PUT /api/phones/:number/owner` |
 | 05 SINPE | `GET /api/sinpe` · `GET /api/sinpe/stats` (enrolled, not enrolled, events) · `POST /api/sinpe` · `DELETE /api/sinpe/:number` · `PUT /api/sinpe/:phoneId/account` · selects reuse `GET /api/phones` and `GET /api/accounts` |
 | 07 Transferencias | `POST /api/transfers/sinpe` · `POST /api/transfers/iban` → return the receipt id and the before/after balances of both accounts |
-| 06 Historial | `GET /api/reports/movements?iban=&from=&to=` · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
+| 06 Historial | `GET /api/reports/movements?iban=&from=&to=` (calls `sp_consultar_movimientos`, 2 result sets) · `GET /api/reports/enrollment-history?number=` (every event, oldest first) · `GET /api/reports/account-phones?iban=` (phones currently enrolled to the account). Each report reloads when its inputs change (the Figma has no "Consultar" button); the period defaults to the current month. |
 
 **Transfer detail ("Detalle (opcional)"):**
 - `transferencia.detalle VARCHAR(100) NULL` is in `01`. `sp_transferir_sinpe` and `sp_transferir_iban` in `03` take a 4th parameter `p_detalle` (pass NULL when empty).
-- Revisión and Comprobante show a "Detalle" row **only when the user wrote a detail** (Cristopher's decision); with an empty detail they look exactly like the Figma. In Historial, show it only if there is a natural place; otherwise ask.
+- Revisión and Comprobante show a "Detalle" row **only when the user wrote a detail** (Cristopher's decision); with an empty detail they look exactly like the Figma. **Historial does not show it** (Cristopher's decision: the Figma table has no natural place, and `sp_consultar_movimientos` does not return it).
 
 **Known limitation (for the README in Phase 9):** with two transfers confirmed at the same time on the same accounts, the money is always correct (the procedures lock both accounts with `FOR UPDATE` and run in a transaction). Only the receipt can be affected: its "after" balances are read right after the `CALL` without a lock, so they may already include the other transfer, and the "before" values (after ∓ amount) would be off by that amount.
 

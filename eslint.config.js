@@ -15,6 +15,7 @@ const browserGlobals = {
   fetch: 'readonly',
   Node: 'readonly',
   localStorage: 'readonly',
+  URLSearchParams: 'readonly',
   console: 'readonly',
 };
 

@@ -1,5 +1,8 @@
 import { ValidationError } from '../utils/errors.js';
 
+// "Falta el correo electrónico" / "Faltan los nombres": agrees with any article.
+const missing = (label) => `${/^l[oa]s /i.test(label) ? 'Faltan' : 'Falta'} ${label.toLowerCase()}`;
+
 /** Throws if the body is not a plain object or has fields outside `allowed`. */
 export function assertOnlyFields(body, allowed) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
@@ -15,7 +18,7 @@ export function assertOnlyFields(body, allowed) {
 export function requireString(body, field, maxLength, label = field) {
   const value = body[field];
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new ValidationError(`${label} es requerido`, field);
+    throw new ValidationError(missing(label), field);
   }
   const trimmed = value.trim();
   if (trimmed.length > maxLength) {
@@ -28,7 +31,7 @@ export function requireString(body, field, maxLength, label = field) {
 export function requireId(body, field, label = field) {
   const value = body[field];
   if (!Number.isInteger(value) || value <= 0) {
-    throw new ValidationError(`${label} es requerido`, field);
+    throw new ValidationError(missing(label), field);
   }
   return value;
 }

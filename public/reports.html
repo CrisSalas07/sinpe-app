@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Historial e informes · JUNTAUCR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap"
+    />
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script type="module" src="/js/reports.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <!-- 06 Historial e informes -->
+      <section class="card hero">
+        <div>
+          <h1 class="page-title">Historial e informes</h1>
+          <p class="page-sub">Movimientos por cuenta y afiliaciones por teléfono.</p>
+        </div>
+      </section>
+
+      <div class="stack">
+        <section class="card" aria-labelledby="movements-title">
+          <h2 class="section-title card-title" id="movements-title">Movimientos de una cuenta</h2>
+          <div class="alert alert-bad" role="alert" hidden id="movements-alert"></div>
+          <div class="field">
+            <label class="label" for="movements-iban">Cuenta</label>
+            <select class="select" id="movements-iban"></select>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label class="label" for="movements-from">Desde</label>
+              <input class="input" id="movements-from" type="date" />
+            </div>
+            <div class="field">
+              <label class="label" for="movements-to">Hasta</label>
+              <input class="input" id="movements-to" type="date" />
+            </div>
+          </div>
+          <table class="table report-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Contraparte</th>
+                <th>Monto</th>
+              </tr>
+            </thead>
+            <tbody id="movements-rows"></tbody>
+          </table>
+          <dl class="kv kv-plain">
+            <div class="kv-row">
+              <dt>Total enviado en el período</dt>
+              <dd id="total-sent"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Total recibido en el período</dt>
+              <dd id="total-received"></dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="card" aria-labelledby="history-title">
+          <h2 class="section-title card-title" id="history-title">Afiliaciones de un teléfono</h2>
+          <div class="alert alert-bad" role="alert" hidden id="history-alert"></div>
+          <div class="field">
+            <label class="label" for="history-number">Teléfono</label>
+            <select class="select" id="history-number"></select>
+          </div>
+          <table class="table report-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Evento</th>
+                <th>Cuenta</th>
+              </tr>
+            </thead>
+            <tbody id="history-rows"></tbody>
+          </table>
+        </section>
+
+        <section class="card" aria-labelledby="phones-title">
+          <h2 class="section-title card-title" id="phones-title">
+            Teléfonos asociados a una cuenta
+          </h2>
+          <div class="alert alert-bad" role="alert" hidden id="phones-alert"></div>
+          <div class="field">
+            <label class="label" for="phones-iban">Cuenta</label>
+            <select class="select" id="phones-iban"></select>
+          </div>
+          <table class="table report-table">
+            <thead>
+              <tr>
+                <th>Teléfono</th>
+                <th>SINPE Móvil</th>
+                <th>Afiliado desde</th>
+              </tr>
+            </thead>
+            <tbody id="phones-rows"></tbody>
+          </table>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

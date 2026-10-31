@@ -817,3 +817,16 @@ fieldset.plain:first-of-type .field:first-child {
 .acct-empty {
   color: var(--mut);
 }
+
+/* Historial e informes: report cards with a table inside. */
+.card-title {
+  margin-bottom: 12px;
+}
+
+.report-table {
+  margin-top: 18px;
+}
+
+.report-table th {
+  border-bottom: 1px solid var(--line);
+}
