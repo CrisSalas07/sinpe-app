@@ -286,6 +286,11 @@ select {
   max-width: 220px;
 }
 
+/* Long values (emails) are cut with an ellipsis, as in Figma; the full value is in the title. */
+.table td.clip {
+  max-width: 170px;
+}
+
 .table tr:first-child td {
   border-top: none;
 }
@@ -379,6 +384,7 @@ select {
   border-radius: var(--r-btn);
   border: 1.5px solid transparent;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
 }
 

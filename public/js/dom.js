@@ -30,3 +30,38 @@ export function icon(name, className = 'icon') {
   svg.append(use);
   return svg;
 }
+
+/** Status tag. kind: 'ok' | 'bad' | 'neutral'. */
+export function tag(text, kind) {
+  return el('span', { class: `tag tag-${kind}` }, text);
+}
+
+/** Hides the alert and every field error of a form, restoring the help texts. */
+export function clearFormErrors(form, alertBox) {
+  alertBox.hidden = true;
+  for (const input of form.querySelectorAll('[aria-invalid]'))
+    input.removeAttribute('aria-invalid');
+  for (const error of form.querySelectorAll('.field-error')) error.hidden = true;
+  for (const help of form.querySelectorAll('.help')) help.hidden = false;
+}
+
+/**
+ * Shows an API error in the form's red alert. If the server named a field, that input turns red
+ * and its "<field>-error" text replaces its "<field>-help" text.
+ */
+export function showFormError(form, alertBox, err) {
+  alertBox.textContent = err.message;
+  alertBox.hidden = false;
+
+  const input = err.field && form.elements.namedItem(err.field);
+  if (!input) return;
+  input.setAttribute('aria-invalid', 'true');
+  const error = document.getElementById(`${err.field}-error`);
+  if (error) {
+    error.textContent = err.message;
+    error.hidden = false;
+  }
+  const help = document.getElementById(`${err.field}-help`);
+  if (help) help.hidden = true;
+  input.focus();
+}

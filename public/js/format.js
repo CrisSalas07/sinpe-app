@@ -39,3 +39,12 @@ export function formatMoney(amount, currency) {
   const sign = negative ? '-' : '';
   return `${sign}${CURRENCY_SYMBOLS[currency]}${NBSP}${grouped}${showDecimals ? `,${decimals}` : ''}`;
 }
+
+/** Lowercase, accent-free text for "Buscar en la lista". */
+export function searchText(...parts) {
+  return parts
+    .join(' ')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}

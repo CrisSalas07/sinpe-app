@@ -9,6 +9,7 @@ const recommended = Object.fromEntries(
 
 const nodeGlobals = { process: 'readonly', console: 'readonly', Buffer: 'readonly' };
 const browserGlobals = {
+  window: 'readonly',
   document: 'readonly',
   location: 'readonly',
   fetch: 'readonly',

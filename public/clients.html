@@ -16,6 +16,156 @@
     <script type="module" src="/js/clients.js"></script>
   </head>
   <body>
-    <main class="page" id="main"></main>
+    <main class="page">
+      <!-- 02 Clientes -->
+      <div id="list-view">
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Clientes</h1>
+            <p class="page-sub">Personas registradas en JUNTAUCR.</p>
+            <a class="btn btn-primary" href="#registrar">Registrar cliente</a>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-value" id="stat-total"></div>
+              <div class="stat-label">Clientes</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-active"></div>
+              <div class="stat-label">Activos</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-with-accounts"></div>
+              <div class="stat-label">Con cuentas</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head">
+          <h2 class="section-title">Listado</h2>
+          <input
+            class="input search"
+            id="search"
+            type="search"
+            placeholder="Buscar en la lista"
+            aria-label="Buscar en la lista"
+          />
+        </div>
+        <div id="list-alert" class="alert alert-bad" role="alert" hidden></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Identificación</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Registro</th>
+                <th>Cuentas</th>
+                <th>Teléfonos</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 08 Registrar cliente -->
+      <div id="form-view" hidden>
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Registrar cliente</h1>
+            <p class="page-sub">La identificación y el correo no pueden repetirse.</p>
+          </div>
+        </section>
+
+        <form id="client-form" class="card form-col">
+          <div id="form-alert" class="alert alert-bad" role="alert" hidden></div>
+
+          <div class="field">
+            <label class="label" for="identification">Identificación</label>
+            <input
+              class="input"
+              id="identification"
+              name="identification"
+              maxlength="20"
+              required
+              aria-describedby="identification-help identification-error"
+            />
+            <p class="help" id="identification-help">Identificador único del cliente.</p>
+            <p class="field-error" id="identification-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="names">Nombres</label>
+            <input
+              class="input"
+              id="names"
+              name="names"
+              maxlength="80"
+              required
+              aria-describedby="names-error"
+            />
+            <p class="field-error" id="names-error" hidden></p>
+          </div>
+
+          <div class="row-2">
+            <div class="field">
+              <label class="label" for="firstSurname">Primer apellido</label>
+              <input
+                class="input"
+                id="firstSurname"
+                name="firstSurname"
+                maxlength="60"
+                required
+                aria-describedby="firstSurname-error"
+              />
+              <p class="field-error" id="firstSurname-error" hidden></p>
+            </div>
+            <div class="field">
+              <label class="label" for="secondSurname">Segundo apellido</label>
+              <input
+                class="input"
+                id="secondSurname"
+                name="secondSurname"
+                maxlength="60"
+                required
+                aria-describedby="secondSurname-error"
+              />
+              <p class="field-error" id="secondSurname-error" hidden></p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="email">Correo electrónico</label>
+            <input
+              class="input"
+              id="email"
+              name="email"
+              type="email"
+              maxlength="120"
+              required
+              aria-describedby="email-help email-error"
+            />
+            <p class="help" id="email-help">No puede repetirse.</p>
+            <p class="field-error" id="email-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="status">Estado</label>
+            <select class="select" id="status" name="status" aria-describedby="status-error">
+              <option value="ACTIVO">ACTIVO</option>
+              <option value="INACTIVO">INACTIVO</option>
+            </select>
+            <p class="field-error" id="status-error" hidden></p>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn btn-secondary" href="#">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Guardar cliente</button>
+          </div>
+        </form>
+      </div>
+    </main>
   </body>
 </html>

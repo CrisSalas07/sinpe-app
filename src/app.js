@@ -6,6 +6,7 @@ import { env } from './config/env.js';
 import { requireAuth } from './middlewares/auth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { authRoutes } from './routes/auth.routes.js';
+import { clientsRoutes } from './routes/clients.routes.js';
 
 const SESSION_IDLE_MS = 15 * 60 * 1000;
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH'];
@@ -61,7 +62,7 @@ app.use(express.static(path.join(import.meta.dirname, '..', 'public')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api', requireAuth);
-// Resource routes are mounted here in later phases.
+app.use('/api/clients', clientsRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
 
 app.use(errorHandler);
