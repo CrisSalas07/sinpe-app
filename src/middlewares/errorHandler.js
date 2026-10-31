@@ -32,6 +32,8 @@ export function errorHandler(err, req, res, next) {
     return res.status(413).json({ error: 'La solicitud es demasiado grande' });
   }
 
-  console.error(`[${req.method} ${req.path}]`, err);
+  // Never log the whole error: mysql2 errors carry `sql` with the parameter values inlined.
+  const { name, code, errno, sqlState, message, stack } = err;
+  console.error(`[${req.method} ${req.path}]`, { name, code, errno, sqlState, message, stack });
   res.status(500).json({ error: 'Error interno' });
 }

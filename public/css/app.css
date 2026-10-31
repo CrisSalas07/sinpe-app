@@ -456,6 +456,11 @@ select {
   border-color: var(--bad);
 }
 
+/* Keep the error color visible while the invalid field has focus. */
+[aria-invalid='true']:focus-visible {
+  outline-color: var(--bad);
+}
+
 .help {
   margin-top: 6px;
   font-size: 12px;
@@ -628,12 +633,14 @@ select {
 .acct-pair {
   display: grid;
   grid-template-columns: 1fr 52px 1fr;
-  align-items: center;
+  /* Both cards keep the same height, even when "Hacia" is still empty. */
+  align-items: stretch;
   max-width: 760px;
   margin-bottom: 18px;
 }
 
 .acct-pair > .icon {
+  align-self: center;
   justify-self: center;
   color: var(--mut);
 }
