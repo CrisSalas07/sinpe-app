@@ -142,3 +142,31 @@ HTTP request
 | SINPE Móvil          | Enroll, unenroll, change account                                                                              | `sp_afiliar_sinpe`, `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe`, `trg_validar_afiliacion`, `trg_historial_afiliacion`, `trg_afiliacion_auditar_delete` |
 | Transferencias       | By phone or IBAN: data → review → receipt; test-case chips                                                    | `sp_transferir_sinpe`, `sp_transferir_iban`, `trg_transferencia_validar`                                                                                    |
 | Historial e informes | Movements of an account in a period with totals, enrollment history of a phone, phones enrolled to an account | `sp_consultar_movimientos`, `historial_afiliacion`                                                                                                          |
+
+## Requirements coverage
+
+Business rules from the assignment:
+
+| Rule                                                          | Enforced in the database                                      | Visible in the app                                   |
+| ------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------- |
+| 1. A client can have several accounts and phones              | `id_cliente` FK in `cuenta_iban` and `telefono_cliente`       | Clientes (Cuentas and Teléfonos columns)             |
+| 2. A phone is unique, has 8 digits and one owner              | `UNIQUE` + `CHECK` + `sp_registrar_telefono`                  | Registrar teléfono · Error                           |
+| 3. Registering a phone is not enrolling it                    | `sp_registrar_telefono` only inserts the phone                | Teléfonos ("No afiliado")                            |
+| 4. An account's phones belong to the same owner               | `trg_validar_afiliacion`                                      | Afiliar · Error (titularidad)                        |
+| 5. At most one active enrollment per phone                    | `UNIQUE(id_telefono)` + `sp_afiliar_sinpe`                    | Afiliar · Error (ya afiliado)                        |
+| 6. Only ACTIVE accounts in CRC can be enrolled                | `trg_validar_afiliacion`                                      | Afiliar · Error (cuenta no válida)                   |
+| 7. No transfers to the same account                           | `trg_transferencia_validar` + `sp_transferir_iban`            | "Misma cuenta" errors (by phone and by IBAN)         |
+| 8. Active accounts, amount > 0, enough balance, same currency | `sp_transferir_*` + `trg_transferencia_validar`               | Balance, amount, currency and blocked-account errors |
+| 9. Historical evidence and rollback                           | Audit triggers + `EXIT HANDLER` / `ROLLBACK`                  | Historial · Cambiar cuenta · Error                   |
+| 10. Changing a phone's owner without breaking enrollments     | `trg_telefono_validar_update` + `sp_cambiar_titular_telefono` | Editar teléfono · Error                              |
+
+Queries and reports from the assignment:
+
+| Report                                      | Visible in the app                             |
+| ------------------------------------------- | ---------------------------------------------- |
+| 1. Phones per client and which are enrolled | Teléfonos                                      |
+| 2. Phones of an IBAN account                | Historial → "Teléfonos asociados a una cuenta" |
+| 3. Enrollment history of a phone            | Historial → "Afiliaciones de un teléfono"      |
+| 4. Sent and received transfers              | Historial → "Movimientos de una cuenta"        |
+| 5. Totals in a date range                   | Historial → period totals                      |
+| 6. Balances and conservation of the total   | Comprobante ("Total entre ambas cuentas")      |
