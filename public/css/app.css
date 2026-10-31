@@ -353,6 +353,7 @@ select {
   background: var(--surf);
   color: var(--mut);
   font-size: 13px;
+  text-decoration: none;
   cursor: pointer;
 }
 

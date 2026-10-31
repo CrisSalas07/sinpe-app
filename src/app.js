@@ -9,6 +9,7 @@ import { accountsRoutes } from './routes/accounts.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { catalogsRoutes } from './routes/catalogs.routes.js';
 import { clientsRoutes } from './routes/clients.routes.js';
+import { phonesRoutes } from './routes/phones.routes.js';
 
 const SESSION_IDLE_MS = 15 * 60 * 1000;
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH'];
@@ -67,6 +68,7 @@ app.use('/api', requireAuth);
 app.use('/api/clients', clientsRoutes);
 app.use('/api/accounts', accountsRoutes);
 app.use('/api/catalogs', catalogsRoutes);
+app.use('/api/phones', phonesRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
 
 app.use(errorHandler);

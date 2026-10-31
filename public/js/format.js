@@ -48,3 +48,8 @@ export function searchText(...parts) {
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 }
+
+/** Last 3 digits only, as in the Teléfonos table: "CR00000000000000000001" → "…001". */
+export function ibanTail(iban) {
+  return `…${iban.slice(-3)}`;
+}

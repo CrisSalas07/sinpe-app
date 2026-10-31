@@ -47,7 +47,8 @@ export function clearFormErrors(form, alertBox) {
 
 /**
  * Shows an API error in the form's red alert. If the server named a field, that input turns red
- * and its "<field>-error" text replaces its "<field>-help" text.
+ * and the .field-error of its .field replaces the .help text. Lookups stay inside the field,
+ * so a page can have several forms with the same field names.
  */
 export function showFormError(form, alertBox, err) {
   alertBox.textContent = err.message;
@@ -56,12 +57,13 @@ export function showFormError(form, alertBox, err) {
   const input = err.field && form.elements.namedItem(err.field);
   if (!input) return;
   input.setAttribute('aria-invalid', 'true');
-  const error = document.getElementById(`${err.field}-error`);
+  const field = input.closest('.field');
+  const error = field?.querySelector('.field-error');
   if (error) {
     error.textContent = err.message;
     error.hidden = false;
   }
-  const help = document.getElementById(`${err.field}-help`);
+  const help = field?.querySelector('.help');
   if (help) help.hidden = true;
   input.focus();
 }

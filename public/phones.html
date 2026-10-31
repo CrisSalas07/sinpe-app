@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Teléfonos · JUNTAUCR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap"
+    />
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script type="module" src="/js/phones.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <!-- 04 Teléfonos -->
+      <div id="list-view">
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Teléfonos</h1>
+            <p class="page-sub">Registrar un teléfono no lo afilia a SINPE Móvil.</p>
+            <a class="btn btn-primary" href="#registrar">Registrar teléfono</a>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-value" id="stat-total"></div>
+              <div class="stat-label">Teléfonos</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-enrolled"></div>
+              <div class="stat-label">Afiliados</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-not-enrolled"></div>
+              <div class="stat-label">Sin afiliar</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head">
+          <h2 class="section-title">Listado</h2>
+          <input
+            class="input search"
+            id="search"
+            type="search"
+            placeholder="Buscar en la lista"
+            aria-label="Buscar en la lista"
+          />
+        </div>
+        <div id="list-alert" class="alert alert-bad" role="alert" hidden></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Titular</th>
+                <th>SINPE Móvil</th>
+                <th>Cuenta afiliada</th>
+                <th><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 10 Registrar teléfono -->
+      <div id="register-view" hidden>
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Registrar teléfono</h1>
+            <p class="page-sub">Registrar un teléfono no lo afilia a SINPE Móvil.</p>
+          </div>
+        </section>
+
+        <form id="register-form" class="card form-col">
+          <div class="alert alert-bad" role="alert" hidden></div>
+
+          <div class="field">
+            <label class="label" for="register-identification">Titular</label>
+            <select
+              class="select"
+              id="register-identification"
+              name="identification"
+              required
+            ></select>
+            <p class="field-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="register-number">Número celular</label>
+            <input
+              class="input"
+              id="register-number"
+              name="number"
+              inputmode="numeric"
+              minlength="8"
+              maxlength="8"
+              pattern="[0-9]{8}"
+              autocomplete="off"
+              required
+              aria-describedby="register-number-help"
+            />
+            <p class="help" id="register-number-help">
+              Exactamente 8 dígitos. Cada número tiene un solo titular.
+            </p>
+            <p class="field-error" hidden></p>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn btn-secondary" href="#">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Guardar teléfono</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 10 Editar teléfono -->
+      <div id="edit-view" hidden>
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Editar teléfono</h1>
+            <p class="page-sub">Cambiar el titular no puede dejar afiliaciones SINPE inválidas.</p>
+          </div>
+        </section>
+
+        <form id="edit-form" class="card form-col">
+          <div class="alert alert-bad" role="alert" hidden></div>
+
+          <div class="field">
+            <label class="label" for="edit-number">Número celular</label>
+            <input class="input" id="edit-number" name="number" readonly />
+          </div>
+
+          <div class="field">
+            <label class="label" for="edit-current-owner">Titular actual</label>
+            <input class="input" id="edit-current-owner" name="currentOwner" readonly />
+          </div>
+
+          <div class="field">
+            <label class="label" for="edit-identification">Nuevo titular</label>
+            <select class="select" id="edit-identification" name="identification" required></select>
+            <p class="field-error" hidden></p>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn btn-secondary" href="#">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Guardar cambios</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>
