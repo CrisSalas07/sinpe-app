@@ -780,3 +780,15 @@ select {
   color: var(--mut);
   text-align: center;
 }
+
+.modal .page-sub {
+  margin-top: 4px;
+}
+
+.modal-alert {
+  margin: 16px 0 0;
+}
+
+.modal-field {
+  margin-top: 16px;
+}

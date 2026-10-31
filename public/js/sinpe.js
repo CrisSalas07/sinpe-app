@@ -1,0 +1,216 @@
+import { api } from './api.js';
+import { clearFormErrors, el, showFormError } from './dom.js';
+import { compactName, formatPhone, fullName, searchText, shortIban } from './format.js';
+import { initLayout } from './layout.js';
+
+const listView = document.getElementById('list-view');
+const enrollView = document.getElementById('enroll-view');
+const rows = document.getElementById('rows');
+const search = document.getElementById('search');
+const listAlert = document.getElementById('list-alert');
+const enrollForm = document.getElementById('enroll-form');
+const enrollOk = document.getElementById('enroll-ok');
+const unenrollDialog = document.getElementById('unenroll-dialog');
+const unenrollForm = document.getElementById('unenroll-form');
+const changeDialog = document.getElementById('change-dialog');
+const changeForm = document.getElementById('change-form');
+
+let enrollments = [];
+let selected = null; // enrollment shown in the open modal
+const phonesById = new Map();
+const accountsById = new Map();
+
+await initLayout('sinpe');
+window.addEventListener('hashchange', showView);
+search.addEventListener('input', renderRows);
+enrollForm.addEventListener('submit', onEnroll);
+unenrollForm.addEventListener('submit', onUnenroll);
+changeForm.addEventListener('submit', onChangeAccount);
+for (const button of document.querySelectorAll('[data-close]')) {
+  button.addEventListener('click', () => button.closest('dialog').close());
+}
+await Promise.all([loadEnrollments(), loadOptions()]);
+showView();
+
+function alertOf(form) {
+  return form.querySelector('.alert-bad');
+}
+
+// "Afiliar a SINPE Móvil" is a separate view of this page, reached with #afiliar.
+function showView() {
+  const showForm = location.hash === '#afiliar';
+  listView.hidden = showForm;
+  enrollView.hidden = !showForm;
+  if (showForm) {
+    enrollOk.hidden = true;
+    clearFormErrors(enrollForm, alertOf(enrollForm));
+    enrollForm.elements.phoneId.focus();
+  }
+}
+
+async function loadEnrollments() {
+  try {
+    const [list, stats] = await Promise.all([api('/api/sinpe'), api('/api/sinpe/stats')]);
+    enrollments = list.map((item) => ({
+      ...item,
+      search: searchText(
+        item.number,
+        formatPhone(item.number),
+        compactName(item.ownerNames, item.ownerFirstSurname),
+        item.iban,
+      ),
+    }));
+    document.getElementById('stat-enrolled').textContent = stats.enrolled;
+    document.getElementById('stat-not-enrolled').textContent = stats.notEnrolled;
+    document.getElementById('sub-not-enrolled').textContent = stats.notEnrolled;
+    document.getElementById('stat-events').textContent = stats.events;
+    listAlert.hidden = true;
+    renderRows();
+  } catch (err) {
+    listAlert.textContent = err.message;
+    listAlert.hidden = false;
+  }
+}
+
+// Selects list every phone and every account (Cristopher's decision): the database triggers and
+// procedures reject invalid combinations, as the Figma error screens show.
+async function loadOptions() {
+  try {
+    const [phones, accounts] = await Promise.all([api('/api/phones'), api('/api/accounts')]);
+    for (const phone of phones) phonesById.set(phone.id, phone);
+    for (const account of accounts) accountsById.set(account.id, account);
+    enrollForm.elements.phoneId.replaceChildren(
+      ...phones.map((phone) =>
+        el(
+          'option',
+          { value: phone.id },
+          `${phone.number} · ${fullName(phone.ownerNames, phone.ownerFirstSurname, phone.ownerSecondSurname)}`,
+        ),
+      ),
+    );
+    const accountOptions = () =>
+      accounts.map((account) =>
+        el(
+          'option',
+          { value: account.id },
+          `${account.iban} · ${account.bankCode} · ${account.currency} · ${account.status}`,
+        ),
+      );
+    enrollForm.elements.accountId.replaceChildren(...accountOptions());
+    changeForm.elements.accountId.replaceChildren(...accountOptions());
+  } catch (err) {
+    listAlert.textContent = err.message;
+    listAlert.hidden = false;
+  }
+}
+
+function renderRows() {
+  const query = searchText(search.value.trim());
+  const visible = enrollments.filter((item) => item.search.includes(query));
+  rows.replaceChildren(
+    ...visible.map((item) => {
+      const change = el('button', { type: 'button', class: 'chip' }, 'Cambiar de cuenta');
+      change.addEventListener('click', () => openChange(item));
+      const unenroll = el('button', { type: 'button', class: 'chip' }, 'Desafiliar');
+      unenroll.addEventListener('click', () => openUnenroll(item));
+      return el(
+        'tr',
+        {},
+        el('td', {}, formatPhone(item.number)),
+        el('td', {}, compactName(item.ownerNames, item.ownerFirstSurname)),
+        el('td', { class: 'mono' }, shortIban(item.iban)),
+        el('td', {}, el('div', { class: 'row-actions' }, change, unenroll)),
+      );
+    }),
+  );
+}
+
+function phoneSummary(item) {
+  return `${formatPhone(item.number)} · ${compactName(item.ownerNames, item.ownerFirstSurname)}`;
+}
+
+function fillModal(dialog, values) {
+  for (const [key, value] of Object.entries(values)) {
+    dialog.querySelector(`[data-value="${key}"]`).textContent = value;
+  }
+}
+
+function openUnenroll(item) {
+  selected = item;
+  clearFormErrors(unenrollForm, alertOf(unenrollForm));
+  document.getElementById('unenroll-title').textContent =
+    `¿Desafiliar ${formatPhone(item.number)}?`;
+  fillModal(unenrollDialog, {
+    phone: phoneSummary(item),
+    account: `${shortIban(item.iban)} · ${item.bankCode}`,
+    since: item.enrolledAt.slice(0, 16),
+  });
+  unenrollDialog.showModal();
+}
+
+function openChange(item) {
+  selected = item;
+  changeForm.reset();
+  clearFormErrors(changeForm, alertOf(changeForm));
+  document.getElementById('change-title').textContent =
+    `Cambiar cuenta de ${formatPhone(item.number)}`;
+  fillModal(changeDialog, {
+    phone: phoneSummary(item),
+    account: `${shortIban(item.iban)} · ${item.bankCode} · ${item.currency}`,
+  });
+  changeDialog.showModal();
+}
+
+/** Disables the submit button while the request runs; shows API errors in the form. */
+async function submit(form, request) {
+  const button = form.querySelector('button[type="submit"]');
+  clearFormErrors(form, alertOf(form));
+  button.disabled = true;
+  try {
+    await request();
+    return true;
+  } catch (err) {
+    showFormError(form, alertOf(form), err);
+    return false;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function onEnroll(event) {
+  event.preventDefault();
+  enrollOk.hidden = true;
+  const phone = phonesById.get(Number(enrollForm.elements.phoneId.value));
+  const account = accountsById.get(Number(enrollForm.elements.accountId.value));
+  const ok = await submit(enrollForm, () =>
+    api('/api/sinpe', { method: 'POST', body: { phoneId: phone.id, accountId: account.id } }),
+  );
+  if (!ok) return;
+  // 11 Éxito: stay on the form with a confirmation, and refresh the list from the database.
+  enrollOk.textContent = `${formatPhone(phone.number)} quedó afiliado a la cuenta ${shortIban(account.iban)}. Se registró el evento AFILIACION en el historial.`;
+  enrollOk.hidden = false;
+  await loadEnrollments();
+}
+
+async function onUnenroll(event) {
+  event.preventDefault();
+  const ok = await submit(unenrollForm, () =>
+    api(`/api/sinpe/${selected.number}`, { method: 'DELETE' }),
+  );
+  if (!ok) return;
+  unenrollDialog.close();
+  await loadEnrollments();
+}
+
+async function onChangeAccount(event) {
+  event.preventDefault();
+  const ok = await submit(changeForm, () =>
+    api(`/api/sinpe/${selected.phoneId}/account`, {
+      method: 'PUT',
+      body: { accountId: Number(changeForm.elements.accountId.value) },
+    }),
+  );
+  if (!ok) return;
+  changeDialog.close();
+  await loadEnrollments();
+}

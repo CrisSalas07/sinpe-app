@@ -109,6 +109,7 @@ README.md
 - One HTML page per menu section.
 - Create forms ("Registrar …") are **separate views inside the same page**, as in Figma.
 - "Desafiliar" and "Cambiar cuenta" are **modals**.
+- **Afiliar / Cambiar cuenta selects are NOT filtered** (Cristopher's decision): they list every phone and every account, so every Figma error screen (ya afiliado, cuenta no válida, titularidad, Cambiar cuenta · Error) can be reproduced and the database triggers/procedures are the ones that reject invalid combinations. The Figma help texts are kept as they are. After a successful "Afiliar" the view stays on the form with the green alert (11 Éxito).
 - "Editar teléfono" is reached from an **"Editar" chip in each row** of the Teléfonos table (Cristopher's decision: the Figma table has no entry point). Its view is `#editar/<number>`.
 
 ## 5. Security (MANDATORY)
@@ -292,7 +293,7 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 | 02 Clientes | `GET /api/clients` (with account and phone counts) · `GET /api/clients/stats` (total, active, with accounts) · `POST /api/clients` |
 | 03 Cuentas | `GET /api/accounts` · `GET /api/accounts/stats` (total, active, in CRC) · `POST /api/accounts` · `GET /api/catalogs/banks` · `GET /api/catalogs/currencies` |
 | 04 Teléfonos | `GET /api/phones` (enrolled flag + account) · `GET /api/phones/stats` (total, enrolled, not enrolled) · `POST /api/phones` · `PUT /api/phones/:number/owner` |
-| 05 SINPE | `GET /api/sinpe` · `GET /api/sinpe/stats` (enrolled, not enrolled, events) · `POST /api/sinpe` · `DELETE /api/sinpe/:number` · `PUT /api/sinpe/:phoneId/account` · `GET /api/sinpe/unenrolled-phones` · `GET /api/clients/:id/eligible-accounts` (ACTIVA + CRC, same owner) |
+| 05 SINPE | `GET /api/sinpe` · `GET /api/sinpe/stats` (enrolled, not enrolled, events) · `POST /api/sinpe` · `DELETE /api/sinpe/:number` · `PUT /api/sinpe/:phoneId/account` · selects reuse `GET /api/phones` and `GET /api/accounts` |
 | 07 Transferencias | `POST /api/transfers/sinpe` · `POST /api/transfers/iban` → return the receipt id and the before/after balances of both accounts |
 | 06 Historial | `GET /api/reports/movements?iban=&from=&to=` · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
 

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SINPE Móvil · JUNTAUCR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap"
+    />
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script type="module" src="/js/sinpe.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <!-- 05 SINPE Móvil -->
+      <div id="list-view">
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">SINPE Móvil</h1>
+            <p class="page-sub">
+              Teléfonos afiliados. Sin afiliar: <span id="sub-not-enrolled"></span>.
+            </p>
+            <a class="btn btn-primary" href="#afiliar">Afiliar teléfono</a>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-value" id="stat-enrolled"></div>
+              <div class="stat-label">Afiliados</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-not-enrolled"></div>
+              <div class="stat-label">Sin afiliar</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="stat-events"></div>
+              <div class="stat-label">Eventos</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head">
+          <h2 class="section-title">Listado</h2>
+          <input
+            class="input search"
+            id="search"
+            type="search"
+            placeholder="Buscar en la lista"
+            aria-label="Buscar en la lista"
+          />
+        </div>
+        <div id="list-alert" class="alert alert-bad" role="alert" hidden></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Teléfono</th>
+                <th>Titular</th>
+                <th>Cuenta</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 11 Afiliar a SINPE Móvil -->
+      <div id="enroll-view" hidden>
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Afiliar a SINPE Móvil</h1>
+            <p class="page-sub">
+              Asocie un teléfono a una cuenta del mismo titular, activa y en colones.
+            </p>
+          </div>
+        </section>
+
+        <form id="enroll-form" class="card form-col">
+          <div id="enroll-ok" class="alert alert-ok" role="status" hidden></div>
+          <div class="alert alert-bad" role="alert" hidden></div>
+
+          <div class="field">
+            <label class="label" for="enroll-phone">Teléfono</label>
+            <select
+              class="select"
+              id="enroll-phone"
+              name="phoneId"
+              required
+              aria-describedby="enroll-phone-help"
+            ></select>
+            <p class="help" id="enroll-phone-help">
+              Solo se listan teléfonos sin afiliación vigente.
+            </p>
+            <p class="field-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="enroll-account">Cuenta IBAN</label>
+            <select
+              class="select"
+              id="enroll-account"
+              name="accountId"
+              required
+              aria-describedby="enroll-account-help"
+            ></select>
+            <p class="help" id="enroll-account-help">
+              Solo cuentas del mismo titular, ACTIVAS y en CRC.
+            </p>
+            <p class="field-error" hidden></p>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn btn-secondary" href="#">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Afiliar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 12 Desafiliar · Confirmación -->
+      <dialog id="unenroll-dialog" class="modal" aria-labelledby="unenroll-title">
+        <form id="unenroll-form">
+          <h2 class="modal-title" id="unenroll-title"></h2>
+          <p class="page-sub">
+            Se elimina la afiliación vigente. El evento DESAFILIACION queda en el historial del
+            teléfono.
+          </p>
+          <div class="alert alert-bad modal-alert" role="alert" hidden></div>
+          <dl class="kv">
+            <div class="kv-row">
+              <dt>Teléfono</dt>
+              <dd data-value="phone"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Cuenta afiliada</dt>
+              <dd data-value="account"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Afiliado desde</dt>
+              <dd data-value="since"></dd>
+            </div>
+          </dl>
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" data-close>Cancelar</button>
+            <button class="btn btn-primary" type="submit">Desafiliar</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- 13 Cambiar cuenta SINPE -->
+      <dialog id="change-dialog" class="modal" aria-labelledby="change-title">
+        <form id="change-form">
+          <h2 class="modal-title" id="change-title"></h2>
+          <p class="page-sub">
+            Se desafilia la cuenta actual y se afilia la nueva en una sola transacción. Si algo
+            falla, se conserva la afiliación original.
+          </p>
+          <div class="alert alert-bad modal-alert" role="alert" hidden></div>
+          <dl class="kv">
+            <div class="kv-row">
+              <dt>Teléfono</dt>
+              <dd data-value="phone"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Cuenta actual</dt>
+              <dd data-value="account"></dd>
+            </div>
+          </dl>
+          <div class="field modal-field">
+            <label class="label" for="change-account">Nueva cuenta</label>
+            <select
+              class="select"
+              id="change-account"
+              name="accountId"
+              required
+              aria-describedby="change-account-help"
+            ></select>
+            <p class="help" id="change-account-help">
+              Solo cuentas del mismo titular, ACTIVAS y en CRC.
+            </p>
+            <p class="field-error" hidden></p>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" data-close>Cancelar</button>
+            <button class="btn btn-primary" type="submit">Cambiar cuenta</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+  </body>
+</html>
