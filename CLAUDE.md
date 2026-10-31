@@ -280,7 +280,8 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 - **IBAN:** full or short (`CR00 …001`) **exactly where the Figma uses each one**.
   - Full: the Cuentas IBAN table, account cards, inputs, the Afiliar account select.
   - Short: the SINPE table, the Historial selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
-- **Dates:** Historial "Desde"/"Hasta" use `<input type="date">` styled like the select (with the chevron).
+- **Dates:** "Fecha de apertura" (Registrar cuenta) and Historial "Desde"/"Hasta" use the **native `<input type="date">`** (Cristopher's decision). It shows the date in the browser's locale format (e.g. 30/10/2026) instead of the Figma's 2026-11-09; that difference is accepted. The API always sends and receives `YYYY-MM-DD`.
+- **Selects of clients for new records** (e.g. Titular in Registrar cuenta) list only ACTIVO clients; the stored procedure remains the final validation.
 - **Money:**
   - CRC: `₡ 123 991`, with a space as thousands separator and no decimals when they are ,00.
   - USD: `$ 377,00`.

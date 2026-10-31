@@ -69,14 +69,17 @@ async function loadFormOptions() {
       api('/api/catalogs/banks'),
       api('/api/catalogs/currencies'),
     ]);
+    // Only active clients can own a new account; sp_registrar_cuenta still validates it.
     form.elements.clientId.replaceChildren(
-      ...clients.map((client) =>
-        el(
-          'option',
-          { value: client.id },
-          `${client.identification} · ${fullName(client.names, client.firstSurname, client.secondSurname)}`,
+      ...clients
+        .filter((client) => client.status === 'ACTIVO')
+        .map((client) =>
+          el(
+            'option',
+            { value: client.id },
+            `${client.identification} · ${fullName(client.names, client.firstSurname, client.secondSurname)}`,
+          ),
         ),
-      ),
     );
     form.elements.bankId.replaceChildren(
       ...banks.map((bank) => el('option', { value: bank.id }, `${bank.name} (${bank.code})`)),
