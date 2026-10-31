@@ -792,3 +792,28 @@ select {
 .modal-field {
   margin-top: 16px;
 }
+
+/* Fieldsets used only to group and disable the inactive transfer tab. */
+fieldset.plain {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+fieldset.plain + .field,
+fieldset.plain .field:first-child {
+  margin-top: 16px;
+}
+
+fieldset.plain:first-of-type .field:first-child {
+  margin-top: 0;
+}
+
+.acct-name {
+  margin-top: 2px;
+}
+
+.acct-empty {
+  color: var(--mut);
+}

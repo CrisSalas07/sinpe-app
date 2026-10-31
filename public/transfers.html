@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Transferencias · JUNTAUCR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap"
+    />
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script type="module" src="/js/transfers.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <!-- 07 Transferencia -->
+      <section class="card hero">
+        <div>
+          <h1 class="page-title">Nueva transferencia</h1>
+          <p class="page-sub">Mueva dinero por teléfono afiliado o por IBAN.</p>
+        </div>
+      </section>
+
+      <ol class="stepper" aria-label="Pasos">
+        <li class="step" data-step="1"><span class="step-num">1</span>Datos</li>
+        <li class="step" data-step="2"><span class="step-num">2</span>Revisión</li>
+        <li class="step" data-step="3"><span class="step-num">3</span>Comprobante</li>
+      </ol>
+
+      <div class="acct-pair">
+        <div class="acct-card" id="card-from"></div>
+        <svg class="icon" aria-hidden="true"><use href="/img/icons.svg#arrow-right"></use></svg>
+        <div class="acct-card" id="card-to"></div>
+      </div>
+
+      <div id="load-alert" class="alert alert-bad form-col" role="alert" hidden></div>
+
+      <!-- Step 1 · Datos -->
+      <form id="data-form" class="card form-col" novalidate>
+        <div class="alert alert-bad" role="alert" hidden></div>
+
+        <div class="tabs" role="tablist" aria-label="Tipo de transferencia">
+          <button type="button" class="tab" role="tab" data-type="sinpe">Por teléfono</button>
+          <button type="button" class="tab" role="tab" data-type="iban">Por IBAN</button>
+        </div>
+
+        <fieldset class="plain" data-type="sinpe">
+          <div class="field">
+            <label class="label" for="originNumber">Teléfono de origen</label>
+            <select class="select" id="originNumber" name="originNumber"></select>
+            <p class="help" data-balance></p>
+            <p class="field-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="destinationNumber">Teléfono de destino</label>
+            <input
+              class="input"
+              id="destinationNumber"
+              name="destinationNumber"
+              inputmode="numeric"
+              maxlength="8"
+              autocomplete="off"
+            />
+            <p class="help">El número debe tener SINPE Móvil afiliado.</p>
+            <p class="field-error" hidden></p>
+          </div>
+        </fieldset>
+
+        <fieldset class="plain" data-type="iban" disabled hidden>
+          <div class="field">
+            <label class="label" for="originIban">Cuenta de origen</label>
+            <select class="select" id="originIban" name="originIban"></select>
+            <p class="help" data-balance></p>
+            <p class="field-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="destinationIban">IBAN de destino</label>
+            <input
+              class="input"
+              id="destinationIban"
+              name="destinationIban"
+              maxlength="22"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <p class="help">Cuenta ACTIVA y en la misma moneda que el origen.</p>
+            <p class="field-error" hidden></p>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label class="label" for="amount">Monto</label>
+          <div class="input-money">
+            <span class="currency" id="amount-currency" aria-hidden="true">₡</span>
+            <input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" />
+          </div>
+          <p class="field-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="detail">Detalle (opcional)</label>
+          <input
+            class="input"
+            id="detail"
+            name="detail"
+            maxlength="100"
+            placeholder="Ej.: pago de almuerzo"
+          />
+          <p class="field-error" hidden></p>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Revisar transferencia</button>
+        </div>
+
+        <hr class="divider" />
+        <p class="muted">Casos de prueba del enunciado</p>
+        <div class="chip-row">
+          <button type="button" class="chip" data-case="same-account">
+            8000-0001 → 7000-0001 (rechazada)
+          </button>
+          <button type="button" class="chip" data-case="allowed">
+            8000-0001 → 8000-0002 (permitida)
+          </button>
+          <button type="button" class="chip" data-case="other-currency">
+            IBAN 001 → IBAN 025 (otra moneda)
+          </button>
+          <button type="button" class="chip" data-case="insufficient">Saldo insuficiente</button>
+        </div>
+      </form>
+
+      <!-- Step 2 · Revisión -->
+      <section id="review" class="card form-col" hidden>
+        <h2 class="section-title">Confirme los datos</h2>
+        <p class="page-sub">
+          Al confirmar se debita el origen, se acredita el destino y se registra el movimiento en
+          una sola operación.
+        </p>
+        <dl class="kv kv-plain" id="review-rows"></dl>
+        <div class="form-actions">
+          <button class="btn btn-secondary" type="button" id="back">Volver y editar</button>
+          <button class="btn btn-primary" type="button" id="confirm">
+            Confirmar transferencia
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 3 · Comprobante -->
+      <section id="receipt" class="card form-col" hidden>
+        <div class="success-icon">
+          <svg class="icon" aria-hidden="true"><use href="/img/icons.svg#check"></use></svg>
+        </div>
+        <h2 class="section-title">Transferencia registrada</h2>
+        <p class="page-sub" id="receipt-sub"></p>
+        <dl class="kv" id="receipt-rows"></dl>
+        <p class="note-ok">El total se conserva: lo que sale de una cuenta entra en la otra.</p>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="button" id="new-transfer">
+            Nueva transferencia
+          </button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

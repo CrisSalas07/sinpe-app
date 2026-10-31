@@ -53,3 +53,17 @@ export function searchText(...parts) {
 export function ibanTail(iban) {
   return `…${iban.slice(-3)}`;
 }
+
+/** "123991.5" → 12399150. Integer cents, so money math never uses floats. */
+export function toCents(amount) {
+  const [int, dec = ''] = String(amount).split('.');
+  const sign = int.startsWith('-') ? -1 : 1;
+  return sign * (Number(int.replace('-', '')) * 100 + Number(dec.padEnd(2, '0').slice(0, 2)));
+}
+
+/** 12399150 → "123991.50" (the DECIMAL string format the API uses). */
+export function fromCents(cents) {
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(cents);
+  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
+}

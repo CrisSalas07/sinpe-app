@@ -68,3 +68,10 @@ export function requireEnum(body, field, allowed, label = field) {
   }
   return value;
 }
+
+/** Returns the trimmed string at body[field], or null when it is missing or empty. */
+export function optionalString(body, field, maxLength, label = field) {
+  const value = body[field];
+  if (value == null || (typeof value === 'string' && value.trim() === '')) return null;
+  return requireString(body, field, maxLength, label);
+}

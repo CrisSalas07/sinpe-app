@@ -37,3 +37,15 @@ test('money keeps exact digits and follows the Figma format', () => {
   );
   assert.equal(formatMoney('-5000.00', 'CRC'), `-₡${NBSP}5${NBSP}000`);
 });
+
+test('cents helpers are exact for the largest DECIMAL(15,2) values', async () => {
+  const { toCents, fromCents } = await import('../public/js/format.js');
+  assert.equal(toCents('123991.00'), 12399100);
+  assert.equal(toCents('0.5'), 50);
+  assert.equal(toCents('15000'), 1500000);
+  assert.equal(fromCents(toCents('123991.00') - toCents('15000')), '108991.00');
+  assert.equal(fromCents(toCents('63901') - toCents('100000')), '-36099.00');
+  assert.equal(fromCents(toCents('9999999999999.99') * 2), '19999999999999.98');
+  // 0.1 + 0.2 would not be 0.3 with floats.
+  assert.equal(fromCents(toCents('0.1') + toCents('0.2')), '0.30');
+});

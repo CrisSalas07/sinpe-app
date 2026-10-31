@@ -270,7 +270,7 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 - **Status tags:**
   - ok = Activo / Activa / Afiliado / AFILIACION
   - neutral = Inactivo / Inactiva / currency / Enviada / No afiliado (Teléfonos table, as in the PNG)
-  - error = Bloqueada / DESAFILIACION
+  - error = Bloqueada / DESAFILIACION / Sin afiliar (transfer "Hacia" card)
 
 ### Display formatting (`format.js`)
 - **Names:** the database stores them in UPPERCASE. Show them in Title Case.
@@ -301,11 +301,13 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 
 **Transfer detail ("Detalle (opcional)"):**
 - `transferencia.detalle VARCHAR(100) NULL` is in `01`. `sp_transferir_sinpe` and `sp_transferir_iban` in `03` take a 4th parameter `p_detalle` (pass NULL when empty).
-- Show the detail in Revisión, Comprobante and Historial only where the Figma has a place for it.
+- Show the detail in Revisión, Comprobante and Historial only where the Figma has a place for it. As of Phase 7 the Figma has no place in Revisión or Comprobante, so it is stored but not shown there.
 
 **Transfer flow:**
-- **Step 1 → 2 (Revisión)** is frontend-only: it shows the data and the "saldo del origen después".
-- **"Confirmar"** calls the backend, with the button disabled while the request is pending.
+- **Step 1 → 2 (Revisión)** is frontend-only: it checks **formats only** (destination 8 digits / IBAN pattern, amount `^\d{1,13}(\.\d{1,2})?$` and > 0 with the Figma text "El monto debe ser mayor que cero.") and shows the data and the "saldo del origen después" (integer cents).
+- **"Confirmar"** calls the backend, with both buttons disabled while the request is pending. **Business rules are checked only by the database** (Cristopher's decision): if the procedure rejects the transfer, the app goes back to step 1 · Datos and shows the SP message in the red alert, with the field marked when it is unambiguous.
+- **Origin selects:** "Por teléfono" lists the phones that have SINPE Móvil (the label needs the enrolled account); "Por IBAN" lists every account, including blocked or USD ones, so the Figma IBAN error screens can be reproduced.
+- **"Hacia" card:** a registered phone without SINPE Móvil shows its owner, "Teléfono 8000-0020", "—" and the red tag "Sin afiliar" (07 Error · teléfono no afiliado).
 - **Comprobante:** shows before → after for both accounts and the conserved total.
 - **"Casos de prueba del enunciado" chips** are buttons that **prefill the form**. Update their labels to real data:
   - 8000-0001 → 7000-0001 (rechazada, misma cuenta)
