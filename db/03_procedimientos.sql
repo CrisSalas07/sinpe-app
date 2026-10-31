@@ -402,6 +402,11 @@ begin
         signal sqlstate '45000' set message_text = 'El nuevo titular no está registrado';
     end if;
 
+    -- same rule as trg_telefono_validar_insert: an inactive client cannot receive a phone
+    if exists (select 1 from cliente where id_cliente = v_id_cliente and estado = 'INACTIVO') then
+        signal sqlstate '45000' set message_text = 'Este cliente esta inactivo';
+    end if;
+
     if not exists (select 1 from telefono_cliente where numero = p_numero) then
         signal sqlstate '45000' set message_text = 'El teléfono no está registrado';
     end if;

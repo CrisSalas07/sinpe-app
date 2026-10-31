@@ -16,10 +16,11 @@ db/
 ├── 03_procedimientos.sql
 ├── 05_app_user.sql             # documentation only: CREATE USER sinpe_app + GRANT (example password)
 ├── 06_backfill_historial.sql   # one AFILIACION event per seed enrollment; idempotent; run as root
-└── 07_detalle_transferencia.sql # ONLY for databases created before detalle was in 01: ALTER + new transfer SPs
+├── 07_detalle_transferencia.sql # ONLY for databases created before detalle was in 01: ALTER + new transfer SPs
+└── 08_titular_activo.sql        # ONLY for databases created before this change: sp_cambiar_titular_telefono requires an ACTIVO new owner
 ```
 - The folder was renamed from `BD/` to `db/` in Phase 1. `04_pruebas.sql` is omitted for now.
-- **Fresh install order (as root): 01 → 02 → 03 → 05 → 06.** 01 already has `transferencia.detalle` and 03 already has the transfer procedures with `p_detalle`, so 07 is not needed. 06 is needed because the seed enrollments in 01 are inserted before the triggers in 02 exist.
+- **Fresh install order (as root): 01 → 02 → 03 → 05 → 06.** 01 already has `transferencia.detalle` and 03 already has the latest procedures, so 07 and 08 are not needed. 06 is needed because the seed enrollments in 01 are inserted before the triggers in 02 exist.
 - The database `sinpe_movil` is created and loaded (scripts 01–03 were run).
 - The seed enrollments in 01 were inserted before the triggers in 02 existed, so `historial_afiliacion` starts empty until Cristopher runs `06_backfill_historial.sql` as root.
 - The MySQL user **`sinpe_app`@`localhost`** (`GRANT SELECT, EXECUTE ON sinpe_movil.*`) is created by Cristopher as root, and `.env` connects with it. Do not ask him to run `05_app_user.sql` again.
@@ -112,6 +113,7 @@ README.md
 - One HTML page per menu section.
 - Create forms ("Registrar …") are **separate views inside the same page**, as in Figma.
 - "Desafiliar" and "Cambiar cuenta" are **modals**.
+- "Editar teléfono" is reached from an **"Editar" chip in each row** of the Teléfonos table (Cristopher's decision: the Figma table has no entry point). Its view is `#editar/<number>`.
 
 ## 5. Security (MANDATORY)
 
@@ -181,7 +183,7 @@ README.md
 | `sp_registrar_cliente` | identificacion, nombres, primer_apellido, segundo_apellido, correo, estado | 08 Registrar cliente |
 | `sp_registrar_cuenta` | id_cliente, id_entidad, moneda, iban, saldo, fecha_apertura, estado | 09 Registrar cuenta |
 | `sp_registrar_telefono` | identificacion, numero | 10 Registrar teléfono |
-| `sp_cambiar_titular_telefono` | numero, identificacion_nueva | 10 Editar teléfono |
+| `sp_cambiar_titular_telefono` | numero, identificacion_nueva (must be ACTIVO: "Este cliente esta inactivo", as the insert trigger) | 10 Editar teléfono |
 | `sp_afiliar_sinpe` | id_telefono, id_cuenta | 11 Afiliar |
 | `sp_desafiliar_sinpe` | numero | 12 Desafiliar |
 | `sp_cambiar_cuenta_sinpe` | id_telefono, id_cuenta_nueva | 13 Cambiar cuenta |
@@ -269,8 +271,8 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
   - Content centered at **1040 px**; forms use a **760 px** column.
 - **Status tags:**
   - ok = Activo / Activa / Afiliado / AFILIACION
-  - neutral = Inactivo / Inactiva / currency / Enviada
-  - error = Bloqueada / Sin afiliar / DESAFILIACION
+  - neutral = Inactivo / Inactiva / currency / Enviada / No afiliado (Teléfonos table, as in the PNG)
+  - error = Bloqueada / DESAFILIACION
 
 ### Display formatting (`format.js`)
 - **Names:** the database stores them in UPPERCASE. Show them in Title Case.
@@ -280,8 +282,9 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 - **IBAN:** full or short (`CR00 …001`) **exactly where the Figma uses each one**.
   - Full: the Cuentas IBAN table, account cards, inputs, the Afiliar account select.
   - Short: the SINPE table, the Historial selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
+  - Tail only (`…001`): the "Cuenta afiliada" column of the Teléfonos table; "—" when not enrolled.
 - **Dates:** "Fecha de apertura" (Registrar cuenta) and Historial "Desde"/"Hasta" use the **native `<input type="date">`** (Cristopher's decision). It shows the date in the browser's locale format (e.g. 30/10/2026) instead of the Figma's 2026-11-09; that difference is accepted. The API always sends and receives `YYYY-MM-DD`.
-- **Selects of clients for new records** (e.g. Titular in Registrar cuenta) list only ACTIVO clients; the stored procedure remains the final validation.
+- **Selects of clients that receive something** (Titular in Registrar cuenta and Registrar teléfono, Nuevo titular in Editar teléfono) list only ACTIVO clients; the stored procedure / trigger remains the final validation.
 - **Money:**
   - CRC: `₡ 123 991`, with a space as thousands separator and no decimals when they are ,00.
   - USD: `$ 377,00`.
