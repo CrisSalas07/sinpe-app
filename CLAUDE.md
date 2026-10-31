@@ -13,17 +13,13 @@
 db/
 ├── 01_esquema_y_datos.sql      # tables + seed data (24 clients, 36 accounts, 38 phones)
 ├── 02_triggers.sql
-├── 03_procedimientos.sql
-├── 05_app_user.sql             # documentation only: CREATE USER sinpe_app + GRANT (example password)
-├── 06_backfill_historial.sql   # one AFILIACION event per seed enrollment; idempotent; run as root
-├── 07_detalle_transferencia.sql # ONLY for databases created before detalle was in 01: ALTER + new transfer SPs
-└── 08_titular_activo.sql        # ONLY for databases created before this change: sp_cambiar_titular_telefono requires an ACTIVO new owner
+├── 03_procedimientos.sql        # procedures + the app user (CREATE USER IF NOT EXISTS sinpe_app + GRANT)
 ```
 - The folder was renamed from `BD/` to `db/` in Phase 1. `04_pruebas.sql` is omitted for now.
-- **Fresh install order (as root): 01 → 02 → 03 → 05 → 06.** 01 already has `transferencia.detalle` and 03 already has the latest procedures, so 07 and 08 are not needed. 06 is needed because the seed enrollments in 01 are inserted before the triggers in 02 exist.
-- The database `sinpe_movil` is created and loaded (scripts 01–03 were run).
-- The seed enrollments in 01 were inserted before the triggers in 02 existed, so `historial_afiliacion` starts empty until Cristopher runs `06_backfill_historial.sql` as root.
-- The MySQL user **`sinpe_app`@`localhost`** (`GRANT SELECT, EXECUTE ON sinpe_movil.*`) is created by Cristopher as root, and `.env` connects with it. Do not ask him to run `05_app_user.sql` again.
+- **Fresh install (as root): 01 → 02 → 03.** Nothing else is needed:
+  - 01 has the full schema (including `transferencia.detalle`), the seed data, and one `AFILIACION` event in `historial_afiliacion` per seed enrollment (the triggers of 02 do not exist yet when 01 loads).
+  - 03 has the latest procedures and creates the MySQL user `sinpe_app`@`localhost` with an example password that must be changed (and copied to `DB_PASSWORD` in `.env`).
+- Cristopher's database already has all of this applied. Do not ask him to run anything again.
 - `GET /api/salud` was removed in Phase 1.
 
 ## 2. Working rules (MANDATORY)
@@ -155,14 +151,13 @@ README.md
   - log server-side without secrets or full personal data.
 
 **Database user — least privilege**
-- The app connects as the dedicated user `sinpe_app`, **not root**. Cristopher creates it as root (documented in `db/05_app_user.sql`):
+- The app connects as the dedicated user `sinpe_app`, **not root**. It is created at the end of `db/03_procedimientos.sql`:
   ```sql
-  CREATE USER 'sinpe_app'@'localhost' IDENTIFIED BY '<password>';
+  CREATE USER IF NOT EXISTS 'sinpe_app'@'localhost' IDENTIFIED BY '<example password: change it>';
   GRANT SELECT, EXECUTE ON sinpe_movil.* TO 'sinpe_app'@'localhost';
   ```
   - It has **no** `INSERT`, `UPDATE` or `DELETE`.
 - This enforces at the database level that **every write goes through a stored procedure**. The procedures run as their DEFINER.
-- `db/05_app_user.sql` **only documents** these statements, with a placeholder password. Do not ask Cristopher to run it again.
 
 ## 6. Data integrity (MANDATORY)
 
@@ -302,7 +297,7 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 | 06 Historial | `GET /api/reports/movements?iban=&from=&to=` · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
 
 **Transfer detail ("Detalle (opcional)"):**
-- `transferencia.detalle VARCHAR(100) NULL` is in `01`. `sp_transferir_sinpe` and `sp_transferir_iban` in `03` take a 4th parameter `p_detalle` (pass NULL when empty). `db/07_detalle_transferencia.sql` upgrades databases created before this change; Cristopher runs it once as root before Phase 7.
+- `transferencia.detalle VARCHAR(100) NULL` is in `01`. `sp_transferir_sinpe` and `sp_transferir_iban` in `03` take a 4th parameter `p_detalle` (pass NULL when empty).
 - Show the detail in Revisión, Comprobante and Historial only where the Figma has a place for it.
 
 **Transfer flow:**
@@ -339,7 +334,7 @@ APP_PASSWORD_HASH=
    - `helmet`, session, `requireAuth`, rate limit.
    - `scripts/hash-password.js` and the `auth` endpoints.
    - Move `src/db.js` to `src/config/db.js`; split `src/server.js` into `app.js` and `server.js`.
-   - `db/05_app_user.sql` (documentation only; the user already exists), `.env.example`.
+   - `.env.example` (the app user itself is created in `db/03_procedimientos.sql`).
    - Remove `/api/salud` or protect it.
 2. **Visual foundation.** `tokens.css`, `app.css` with every component, `layout.js`, `api.js`, `format.js`, `dom.js`, and the login page working end to end.
 3. **Clientes:** list, stats, search, register and its error.
@@ -352,7 +347,7 @@ APP_PASSWORD_HASH=
    - Theme toggle saved in `localStorage` (done in Phase 3: `js/theme.js` applies it in `<head>` before paint).
    - Screen-by-screen check against Figma.
    - Security self-review against sections 5 and 6.
-   - `README.md` in English: setup (fresh DB install order 01 → 02 → 03 → 05 → 06), scripts, architecture, security notes.
+   - `README.md` in English: setup (fresh DB install order 01 → 02 → 03), scripts, architecture, security notes.
 
 ## 12. Phase report format (in Spanish)
 

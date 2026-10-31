@@ -415,3 +415,9 @@ begin
 end //
 
 DELIMITER ;
+
+-- usuario de la aplicacion con minimo privilegio: solo lee y ejecuta procedimientos.
+-- toda escritura pasa por los procedimientos, que corren con los privilegios de su DEFINER.
+-- CAMBIE LA CONTRASEÑA DE EJEMPLO y use la misma en DB_PASSWORD del archivo .env.
+CREATE USER IF NOT EXISTS 'sinpe_app'@'localhost' IDENTIFIED BY 'cambie-esta-contrasena';
+GRANT SELECT, EXECUTE ON sinpe_movil.* TO 'sinpe_app'@'localhost';

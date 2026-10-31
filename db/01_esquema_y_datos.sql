@@ -229,3 +229,9 @@ INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (27,3);
 INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (29,6);
 INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (31,10);
 INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (33,14);
+
+-- HISTORIAL INICIAL: un evento AFILIACION por cada afiliacion inicial.
+-- Los triggers de 02 aun no existen al cargar estos datos, asi que el historial se registra aqui.
+INSERT INTO historial_afiliacion (id_telefono, id_cuenta, accion, fecha_evento)
+SELECT id_telefono, id_cuenta, 'AFILIACION', fecha_afiliacion
+FROM afiliacion_sinpe;
