@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { clearFormErrors, el, showFormError } from './dom.js';
-import { compactName, formatPhone, fullName, searchText, shortIban } from './format.js';
+import { compactName, formatPhone, searchText, shortIban } from './format.js';
 import { initLayout } from './layout.js';
 
 const listView = document.getElementById('list-view');
@@ -72,7 +72,7 @@ async function loadEnrollments() {
   }
 }
 
-// Selects list every phone and every account (Cristopher's decision): the database triggers and
+// Selects list every phone and every account, each with its state (Cristopher's decision): the database triggers and
 // procedures reject invalid combinations, as the Figma error screens show.
 async function loadOptions() {
   try {
@@ -84,7 +84,7 @@ async function loadOptions() {
         el(
           'option',
           { value: phone.id },
-          `${phone.number} · ${fullName(phone.ownerNames, phone.ownerFirstSurname, phone.ownerSecondSurname)}`,
+          `${phone.number} · ${compactName(phone.ownerNames, phone.ownerFirstSurname)} · ${phone.enrolledIban ? 'afiliado' : 'no afiliado'}`,
         ),
       ),
     );
@@ -93,7 +93,7 @@ async function loadOptions() {
         el(
           'option',
           { value: account.id },
-          `${account.iban} · ${account.bankCode} · ${account.currency} · ${account.status}`,
+          `${shortIban(account.iban)} · ${account.bankCode} · ${account.currency} · ${account.status}`,
         ),
       );
     enrollForm.elements.accountId.replaceChildren(...accountOptions());

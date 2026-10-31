@@ -109,7 +109,9 @@ README.md
 - One HTML page per menu section.
 - Create forms ("Registrar …") are **separate views inside the same page**, as in Figma.
 - "Desafiliar" and "Cambiar cuenta" are **modals**.
-- **Afiliar / Cambiar cuenta selects are NOT filtered** (Cristopher's decision): they list every phone and every account, so every Figma error screen (ya afiliado, cuenta no válida, titularidad, Cambiar cuenta · Error) can be reproduced and the database triggers/procedures are the ones that reject invalid combinations. The Figma help texts are kept as they are. After a successful "Afiliar" the view stays on the form with the green alert (11 Éxito).
+- **Afiliar / Cambiar cuenta selects are NOT filtered** (Cristopher's decision): they list every phone and every account, so every Figma error screen (ya afiliado, cuenta no válida, titularidad, Cambiar cuenta · Error) can be reproduced and the database triggers/procedures are the ones that reject invalid combinations.
+  - Help texts describe the rule, not a filter: Teléfono "El teléfono no debe tener una afiliación vigente."; Cuenta / Nueva cuenta "Debe ser del mismo titular del teléfono, ACTIVA y en CRC.".
+  - Options show their state so a rejection is understandable: phones "80000001 · Leonardo Aguilar · afiliado" (or "no afiliado"), accounts "CR00 …034 · BN · CRC · BLOQUEADA". After a successful "Afiliar" the view stays on the form with the green alert (11 Éxito).
 - "Editar teléfono" is reached from an **"Editar" chip in each row** of the Teléfonos table (Cristopher's decision: the Figma table has no entry point). Its view is `#editar/<number>`.
 
 ## 5. Security (MANDATORY)
@@ -276,8 +278,8 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
   - Selects: full name, "Leonardo Antonio Aguilar Berrocal".
 - **Phones:** stored as `80000001`, shown as `8000-0001`. Input fields take digits only.
 - **IBAN:** full or short (`CR00 …001`) **exactly where the Figma uses each one**.
-  - Full: the Cuentas IBAN table, account cards, inputs, the Afiliar account select.
-  - Short: the SINPE table, the Historial selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
+  - Full: the Cuentas IBAN table, account cards, inputs, the Registrar cuenta form.
+  - Short: the SINPE table, the Afiliar / Cambiar cuenta account selects, the Historial selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
   - Tail only (`…001`): the "Cuenta afiliada" column of the Teléfonos table; "—" when not enrolled.
 - **Dates:** "Fecha de apertura" (Registrar cuenta) and Historial "Desde"/"Hasta" use the **native `<input type="date">`** (Cristopher's decision). It shows the date in the browser's locale format (e.g. 30/10/2026) instead of the Figma's 2026-11-09; that difference is accepted. The API always sends and receives `YYYY-MM-DD`.
 - **Selects of clients that receive something** (Titular in Registrar cuenta and Registrar teléfono, Nuevo titular in Editar teléfono) list only ACTIVO clients; the stored procedure / trigger remains the final validation.
