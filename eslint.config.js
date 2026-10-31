@@ -8,6 +8,14 @@ const recommended = Object.fromEntries(
 );
 
 const nodeGlobals = { process: 'readonly', console: 'readonly', Buffer: 'readonly' };
+const browserGlobals = {
+  document: 'readonly',
+  location: 'readonly',
+  fetch: 'readonly',
+  Node: 'readonly',
+  localStorage: 'readonly',
+  console: 'readonly',
+};
 
 export default [
   { ignores: ['node_modules/'] },
@@ -15,5 +23,9 @@ export default [
     files: ['**/*.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: nodeGlobals },
     rules: recommended,
+  },
+  {
+    files: ['public/**/*.js'],
+    languageOptions: { globals: browserGlobals },
   },
 ];
