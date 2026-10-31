@@ -125,7 +125,7 @@ README.md
   - The memory store is acceptable for this single-instance demo; say so in the README.
 - `requireAuth` protects **every** `/api/*` route except login. The frontend redirects to the login page on 401.
 - Login answers with a generic message on failure ("Usuario o contraseña incorrectos"). Never reveal which field was wrong.
-- Rate-limit login with `express-rate-limit`: 5 attempts per 15 minutes per IP.
+- Rate-limit login with `express-rate-limit`: 5 **failed** attempts per 15 minutes per IP (`skipSuccessfulRequests: true`; successful logins do not count).
 
 **HTTP hardening**
 - `helmet` with a strict CSP: `default-src 'self'`, plus Google Fonts for `style-src` and `font-src`. **No inline scripts and no inline event handlers.**
@@ -236,7 +236,9 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 | 13 Cambiar cuenta (modal) / Error | 2004:915 / 2004:1048 |
 | Dark · 01 Login / 02 Clientes / 06 Historial | 7:71 / 7:102 / 7:583 |
 
-Dark screens exist only for 01–07, but the **dark theme applies to the whole app** through CSS variables.
+Only light-mode PNGs were exported (`disenio/`). The dark theme has no PNGs: build it from the dark tokens below; it **applies to the whole app** through CSS variables.
+
+The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma (Cristopher's decision: fidelity to the prototype; demo app; documented as an accepted risk in the README).
 
 ### Tokens (from Figma variables)
 | Variable | Light | Dark |
