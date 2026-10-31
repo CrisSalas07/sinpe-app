@@ -168,7 +168,7 @@ end //
 
 -- 6. procedimiento para transferir por sinpe movil
 drop procedure if exists sp_transferir_sinpe //
-create procedure sp_transferir_sinpe(p_numero_origen varchar(20), p_numero_destino varchar(20), p_monto decimal(15,2))
+create procedure sp_transferir_sinpe(p_numero_origen varchar(20), p_numero_destino varchar(20), p_monto decimal(15,2), p_detalle varchar(100))
 begin
     declare v_tel_origen int;
     declare v_tel_destino int;
@@ -243,8 +243,8 @@ begin
     update cuenta_iban set saldo = saldo - p_monto where id_cuenta = v_cuenta_origen;
     update cuenta_iban set saldo = saldo + p_monto where id_cuenta = v_cuenta_destino;
 
-    insert into transferencia (id_cuenta_origen, id_cuenta_destino, monto, tipo)
-    values (v_cuenta_origen, v_cuenta_destino, p_monto, 'SINPE_MOVIL');
+    insert into transferencia (id_cuenta_origen, id_cuenta_destino, monto, tipo, detalle)
+    values (v_cuenta_origen, v_cuenta_destino, p_monto, 'SINPE_MOVIL', nullif(trim(p_detalle), ''));
 
     insert into transferencia_sinpe (id_transferencia, id_telefono_origen, id_telefono_destino)
     values (last_insert_id(), v_tel_origen, v_tel_destino);
@@ -257,7 +257,8 @@ drop procedure if exists sp_transferir_iban //
 create procedure sp_transferir_iban(
     in p_iban_origen  varchar(30),
     in p_iban_destino varchar(30),
-    in p_monto        decimal(15,2)
+    in p_monto        decimal(15,2),
+    in p_detalle      varchar(100)
 )
 begin
     declare v_id_origen      int;
@@ -319,8 +320,8 @@ begin
         update cuenta_iban set saldo = saldo - p_monto where id_cuenta = v_id_origen;
         update cuenta_iban set saldo = saldo + p_monto where id_cuenta = v_id_destino;
 
-        insert into transferencia (id_cuenta_origen, id_cuenta_destino, monto, tipo)
-        values (v_id_origen, v_id_destino, p_monto, 'IBAN');
+        insert into transferencia (id_cuenta_origen, id_cuenta_destino, monto, tipo, detalle)
+        values (v_id_origen, v_id_destino, p_monto, 'IBAN', nullif(trim(p_detalle), ''));
 
     commit;
 end //

@@ -15,7 +15,8 @@ db/
 ├── 02_triggers.sql
 ├── 03_procedimientos.sql
 ├── 05_app_user.sql             # documentation only: CREATE USER sinpe_app + GRANT (example password)
-└── 06_backfill_historial.sql   # one AFILIACION event per seed enrollment; idempotent; run as root
+├── 06_backfill_historial.sql   # one AFILIACION event per seed enrollment; idempotent; run as root
+└── 07_detalle_transferencia.sql # transferencia.detalle + p_detalle in both transfer SPs; run once as root
 ```
 - The folder was renamed from `BD/` to `db/` in Phase 1. `04_pruebas.sql` is omitted for now.
 - The database `sinpe_movil` is created and loaded (scripts 01–03 were run).
@@ -97,6 +98,7 @@ public/
 ├── clients.html, accounts.html, phones.html, sinpe.html, transfers.html, reports.html
 ├── css/tokens.css, css/app.css
 └── js/
+    ├── theme.js              # classic script in <head>: applies the saved theme before paint
     ├── layout.js             # shared header, nav, theme toggle, logout, session check
     ├── api.js                # fetch wrapper, uniform error handling, 401 → login
     ├── format.js             # names, phones, IBAN, money
@@ -182,8 +184,8 @@ README.md
 | `sp_afiliar_sinpe` | id_telefono, id_cuenta | 11 Afiliar |
 | `sp_desafiliar_sinpe` | numero | 12 Desafiliar |
 | `sp_cambiar_cuenta_sinpe` | id_telefono, id_cuenta_nueva | 13 Cambiar cuenta |
-| `sp_transferir_sinpe` | numero_origen, numero_destino, monto | 07 Transfer by phone |
-| `sp_transferir_iban` | iban_origen, iban_destino, monto | 07 Transfer by IBAN |
+| `sp_transferir_sinpe` | numero_origen, numero_destino, monto, detalle (NULL allowed) | 07 Transfer by phone |
+| `sp_transferir_iban` | iban_origen, iban_destino, monto, detalle (NULL allowed) | 07 Transfer by IBAN |
 | `sp_consultar_movimientos` | iban, fecha_inicio, fecha_fin → **2 result sets** (movements with counterpart, totals) | 06 Reports |
 
 Read `db/01_esquema_y_datos.sql` before writing any query.
@@ -255,7 +257,9 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 | `--warn` / `--warnbg` | #424874 / #dcd6f7 | #dcd6f7 / #343868 |
 
 - **Fonts (Google Fonts):**
-  - Headings: **Bricolage Grotesque Bold** (38 page title; 24 and 20 section titles).
+  - **Bricolage Grotesque Bold:** page titles (38), stat values and account-card amounts.
+  - Section titles ("Listado", "Movimientos de una cuenta", "Transferencia registrada", modal titles): **Instrument Sans Bold** ~19, as the PNGs show.
+  - **The Figma PNGs win over this document.** When they disagree, follow the PNG and fix this document.
   - Body: **Instrument Sans** (15 body, 13/12 secondary; Medium and SemiBold for labels and buttons).
   - IBAN and codes: **Roboto Mono Medium 13**.
 - **Radii:** cards 14, account cards 12, buttons and alerts 10, inputs 9, chips 20.
@@ -272,9 +276,10 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
   - Compact: "Leonardo Aguilar" (first name + first surname).
   - Selects: full name, "Leonardo Antonio Aguilar Berrocal".
 - **Phones:** stored as `80000001`, shown as `8000-0001`. Input fields take digits only.
-- **IBAN:**
-  - Full in account cards and inputs.
-  - Short in tables and selects: `CR00 …001`.
+- **IBAN:** full or short (`CR00 …001`) **exactly where the Figma uses each one**.
+  - Full: the Cuentas IBAN table, account cards, inputs, the Afiliar account select.
+  - Short: the SINPE table, the Historial selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
+- **Dates:** Historial "Desde"/"Hasta" use `<input type="date">` styled like the select (with the chevron).
 - **Money:**
   - CRC: `₡ 123 991`, with a space as thousands separator and no decimals when they are ,00.
   - USD: `$ 377,00`.
@@ -290,6 +295,10 @@ The login footer "Usuario de prueba: admin · Juntaucr2026" is kept as in Figma 
 | 05 SINPE | `GET /api/sinpe` · `GET /api/sinpe/stats` (enrolled, not enrolled, events) · `POST /api/sinpe` · `DELETE /api/sinpe/:number` · `PUT /api/sinpe/:phoneId/account` · `GET /api/sinpe/unenrolled-phones` · `GET /api/clients/:id/eligible-accounts` (ACTIVA + CRC, same owner) |
 | 07 Transferencias | `POST /api/transfers/sinpe` · `POST /api/transfers/iban` → return the receipt id and the before/after balances of both accounts |
 | 06 Historial | `GET /api/reports/movements?iban=&from=&to=` · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
+
+**Transfer detail ("Detalle (opcional)"):**
+- `db/07_detalle_transferencia.sql` adds `transferencia.detalle VARCHAR(100) NULL` and a 4th parameter `p_detalle` to `sp_transferir_sinpe` and `sp_transferir_iban` (pass NULL when empty). `03_procedimientos.sql` has the same procedure versions. Cristopher runs 07 as root before Phase 7.
+- Show the detail in Revisión, Comprobante and Historial only where the Figma has a place for it.
 
 **Transfer flow:**
 - **Step 1 → 2 (Revisión)** is frontend-only: it shows the data and the "saldo del origen después".
@@ -335,7 +344,7 @@ APP_PASSWORD_HASH=
 7. **Transferencias:** by phone and by IBAN, the 3 steps, every error, and the test-case chips.
 8. **Historial e informes:** movements by period with totals, enrollment history of a phone, phones of an account.
 9. **Dark theme, polish and docs.**
-   - Theme toggle saved in `localStorage`.
+   - Theme toggle saved in `localStorage` (done in Phase 3: `js/theme.js` applies it in `<head>` before paint).
    - Screen-by-screen check against Figma.
    - Security self-review against sections 5 and 6.
    - `README.md` in English: setup, scripts, architecture, security notes.
