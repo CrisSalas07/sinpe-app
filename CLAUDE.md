@@ -360,6 +360,7 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 **Registrar cliente (admin):**
 - Instead of Estado, the gray note "El cliente se crea con estado ACTIVO en <entidad>."
 - "Credenciales de acceso" section: Usuario (unique per entity, 3–50 characters `[a-z0-9._]`) and Contraseña temporal (min 8 characters, help "El cliente la usará para iniciar sesión."). No forced password change on first login: it is not in the Figma.
+- The username `admin` (and the value of `APP_USER`, if different) is reserved and can never be registered, in any entity (Cristopher's decision): login checks `APP_USER` first, so such a client could never log in. `validators/clients` rejects it as a `ValidationError` on `username`, with a test (Phase D).
 
 **Registrar cuenta (admin):**
 - Instead of Estado, the note "La cuenta se crea con estado ACTIVA."
