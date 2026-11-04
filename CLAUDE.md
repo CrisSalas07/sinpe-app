@@ -20,7 +20,8 @@ db/
 - **Fresh install (as root): 01 → 02 → 03.** Nothing else is needed:
   - 01 has the full schema (including `transferencia.detalle`), the seed data, and one `AFILIACION` event in `historial_afiliacion` per seed enrollment (the triggers of 02 do not exist yet when 01 loads).
   - 03 has the latest procedures and creates the MySQL user `sinpe_app`@`localhost` with an example password that must be changed (and copied to `DB_PASSWORD` in `.env`).
-- **Phase B changes 01, 02 and 03.** Since 01 starts with `DROP DATABASE`, applying them means reinstalling 01 → 02 → 03 (seed data is recreated). Tell Cristopher when to do it, and to repeat `ALTER USER` if he changed the `sinpe_app` password.
+- **Phase B changed 01 and 03** (02 stays). Since 01 starts with `DROP DATABASE`, applying them means reinstalling 01 → 02 → 03; seed data is recreated. The `sinpe_app` user and its password survive the reinstall (`DROP DATABASE` does not touch users and `CREATE USER IF NOT EXISTS` is a no-op), so `ALTER USER` is not needed.
+- **Load each script separately, by stdin redirection** (`mysql < file`). Chaining them with `-e "source a; source b; source c"` fails because of `DELIMITER` and leaves the procedures uninstalled.
 - `GET /api/salud` was removed in Phase 1.
 
 ## 2. Working rules (MANDATORY)
@@ -204,7 +205,7 @@ The triggers of `02` stay. New `SIGNAL` messages go without accents, like the cu
 ```
 entidad_financiera:
   + codigo_iban          CHAR(3) NOT NULL UNIQUE           -- BCR 152, BN 151, BP 161, BAC 102
-  + limite_diario_sinpe  DECIMAL(15,2) NOT NULL DEFAULT 200000.00   -- value pending, see section 13
+  + limite_diario_sinpe  DECIMAL(15,2) NOT NULL DEFAULT 200000.00
 
 NEW TABLE cliente_entidad                 -- the person as a client of an entity + credentials
   id_cliente      INT NOT NULL  FK cliente
@@ -229,7 +230,7 @@ A person is unique system-wide (by identification); what varies is their relatio
 ### SINPE Móvil rules (real-world, researched)
 **Afiliar (admin), in this order:**
 1. The phone must belong to a client of the session entity.
-2. The account must be of the session entity, same owner as the phone, ACTIVA and CRC (`trg_validar_afiliacion` already validates this).
+2. The account must be of the session entity, same owner as the phone, ACTIVA and CRC. The procedure checks this **before** points 3 and 4, with the same messages as `trg_validar_afiliacion` (which stays as the last defense): every owner of a BCR USD account (026, 030) has all phones enrolled in BP, so otherwise "cuenta no válida" could not be reproduced.
 3. Enrolled in **this** entity: "El telefono ya esta afiliado en esta entidad. Use Cambiar cuenta."
 4. Enrolled in **another** entity: "El telefono ya esta afiliado en otra entidad (<código>). Debe desafiliarse alla primero."
 
@@ -245,7 +246,7 @@ A person is unique system-wide (by identification); what varies is their relatio
 7. **Daily limit:** today's SINPE sends from that account + the amount cannot exceed the entity limit: "El monto supera su limite diario de SINPE Movil".
 8. Sufficient balance.
 
-The client does **not** need their own enrolled phone to send. If the origin account has an enrolled phone, it is stored in `transferencia_sinpe.id_telefono_origen`; otherwise NULL.
+The client does **not** need their own enrolled phone to send. If the origin account has an enrolled phone, it is stored in `transferencia_sinpe.id_telefono_origen` (the earliest enrolled, since an account can have several); otherwise NULL.
 
 **Transfer by IBAN (client):** origin validated as in point 1. Destination is any ACTIVA IBAN of any entity, same currency.
 
@@ -378,13 +379,13 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 - **Step 1 → 2 (Revisión)** is frontend-only: it checks **formats only** (destination 8 digits / IBAN pattern, amount `^\d{1,13}(\.\d{1,2})?$` and > 0 with the Figma text "El monto debe ser mayor que cero.") and shows "Cuenta de origen", "Destino: 8000-0002 · Iván Altamirano (BN)", "Monto", "Saldo del origen después" (integer cents), "Tipo" and "Comisión: ₡ 0" (always 0 in the simulation).
 - **"Confirmar"** calls the backend, with both buttons disabled while the request is pending. **Business rules are checked only by the database** (Cristopher's decision): if the procedure rejects the transfer, the app goes back to step 1 · Datos and shows the SP message in the red alert, with the field marked when it is unambiguous.
 - **"Desde" card:** the client's own account. **"Hacia" card:** the recipient from `/recipient`.
-- **Comprobante:** shows before → after for both accounts and the conserved total (see section 13, open decision 1).
+- **Comprobante:** shows before → after for both accounts and the conserved total, as in the Figma, because the exercise requires proving conservation (Cristopher's decision; mention it in the README). The "Hacia" card in step 1 never shows that balance.
 - **Test-case chips** are buttons that **prefill the form**. They are hidden unless the session user is `leonardo.aguilar` (BCR):
   - misma cuenta: 001 → 7000-0001
   - permitida: 001 → 8000-0002 (BN)
   - otra moneda: IBAN 001 → IBAN 025 (USD)
   - saldo insuficiente: 001 → 8000-0002 for ₡150 000
-  - límite diario: see section 13, open decision 2
+  - No chip for the daily limit: account 001 cannot reach it in one transfer (see section 13).
 
 ## 10. Environment variables (`.env.example`, committed without real values)
 ```
@@ -450,10 +451,13 @@ F. Tests, lint, README (screen and rule tables), security review, manual test of
 ```
 After the report, **wait** for Cristopher to say "continúa".
 
-## 13. Open decisions (ask before implementing)
+## 13. Decisions from the change spec
 
-1. **Destination balances in the receipt.** It shows the destination account's before/after and "Total entre ambas cuentas". A real app would not show a third party's balance, but the exercise requires proving conservation of the total. Spec recommendation: keep it as in the Figma, mention it in the README, and do not show that balance in the "Hacia" card.
-2. **Daily limit value.** Proposed ₡200 000 for every entity (BCR lets the client configure up to ₡500 000).
+**Closed (Cristopher, Nov 3, 2026):**
+1. **Destination balances in the receipt:** kept as in the Figma; see "Comprobante" in section 9.
+2. **Daily limit:** ₡200 000 for every entity. Account 001 (₡123 991) cannot reach it, and the BCR limit cannot go below ₡150 000 without breaking the "saldo insuficiente" chip, because the limit is checked first. So it is tested without a chip: log in as `jandany.moya` (BCR) and send ₡250 000 from account 017 (₡507 847).
+
+**Open:**
 3. **`disenio/` images.** Replace with exports of the new Figma when they are ready.
 
 **To fix in the Figma, not in the code:** the "usuario de otra entidad" login error (must be generic); the help "Se cambia en el primer ingreso" (must be "El cliente la usará para iniciar sesión."); and what the Figma lacks, defined here instead: entity selector, status notes, "Cuenta de origen", daily limit error, "ya afiliado en otra entidad" text.
