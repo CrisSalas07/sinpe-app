@@ -461,7 +461,10 @@ After the report, **wait** for Cristopher to say "continúa".
 1. **Destination balances in the receipt:** kept as in the Figma; see "Comprobante" in section 9.
 2. **Daily limit:** ₡200 000 for every entity. Account 001 (₡123 991) cannot reach it, and the BCR limit cannot go below ₡150 000 without breaking the "saldo insuficiente" chip, because the limit is checked first. So it is tested without a chip: log in as `jandany.moya` (BCR) and send ₡250 000 from account 017 (₡507 847).
 
+3. **Simultaneous opposite transfers:** the possible deadlock stays documented in the README; lock order is not changed.
+4. **`/api/transfers/recipient`:** no rate limit, documented in the README.
+
 **Open:**
-3. **`disenio/` images.** Replace with exports of the new Figma when they are ready.
+5. **`disenio/` images.** Replace with exports of the new Figma when they are ready.
 
 **To fix in the Figma, not in the code:** the "usuario de otra entidad" login error (must be generic); the help "Se cambia en el primer ingreso" (must be "El cliente la usará para iniciar sesión."); and what the Figma lacks, defined here instead: entity selector, status notes, "Cuenta de origen", daily limit error, "ya afiliado en otra entidad" text.
