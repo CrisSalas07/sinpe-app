@@ -415,6 +415,8 @@ D. Admin screens filtered by entity (clients with credentials, accounts, phones,
 E. Client screens (Inicio, Mis teléfonos, Transferir, Mis movimientos).
 F. Tests, lint, README (screen and rule tables), security review, manual test of every error in BCR and in another entity.
 
+**Testing without touching the real database:** run a throwaway `mysqld` on another port with its data directory in the scratchpad, load 01 → 02 → 03, and start the app with `node --env-file=<test env> src/server.js`. Never run the scripts against port 3306: 01 drops the database.
+
 ### Finished v1 phases (history)
 
 0. **Review.** Read this document, `db/` and Figma. Verify that `npm run dev` and `/api/salud` work. Report your understanding and questions. **No code.**

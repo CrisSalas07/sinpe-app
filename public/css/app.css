@@ -848,7 +848,7 @@ fieldset.plain .field:first-child {
   color: var(--mut);
 }
 
-/* Historial e informes: report cards with a table inside. */
+/* Informes and Mis movimientos: report cards with a table inside. */
 .card-title {
   margin-bottom: 12px;
 }

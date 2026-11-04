@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  accountLabel,
+  accountType,
   compactName,
+  counterpartName,
   formatMoney,
   formatPhone,
   fullName,
@@ -48,4 +51,15 @@ test('cents helpers are exact for the largest DECIMAL(15,2) values', async () =>
   assert.equal(fromCents(toCents('9999999999999.99') * 2), '19999999999999.98');
   // 0.1 + 0.2 would not be 0.3 with floats.
   assert.equal(fromCents(toCents('0.1') + toCents('0.2')), '0.30');
+});
+
+test('account labels follow the currency', () => {
+  assert.equal(accountType('CRC'), 'Ahorros colones');
+  assert.equal(accountType('USD'), 'Ahorros dólares');
+  assert.equal(accountLabel('CR12015200000000000001', 'CRC'), 'CR12 …001 · Ahorros colones');
+});
+
+test('counterpart: first name + surname from the text of the movements', () => {
+  assert.equal(counterpartName('IVAN CALET ALTAMIRANO'), 'Ivan Altamirano');
+  assert.equal(counterpartName('DIEGO PASTRAN'), 'Diego Pastran');
 });

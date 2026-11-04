@@ -63,15 +63,6 @@ export function requireDate(body, field, label = field) {
   return value;
 }
 
-/** Returns body[field] if it is one of `allowed`. */
-export function requireEnum(body, field, allowed, label = field) {
-  const value = body[field];
-  if (!allowed.includes(value)) {
-    throw new ValidationError(`${label} debe ser ${allowed.join(', ')}`, field);
-  }
-  return value;
-}
-
 /** Returns the trimmed string at body[field], or null when it is missing or empty. */
 export function optionalString(body, field, maxLength, label = field) {
   const value = body[field];

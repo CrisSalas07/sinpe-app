@@ -23,7 +23,7 @@ export function formatPhone(number) {
   return `${number.slice(0, 4)}-${number.slice(4)}`;
 }
 
-/** "CR00000000000000000001" → "CR00 …001". */
+/** "CR12015200000000000001" → "CR12 …001". */
 export function shortIban(iban) {
   return `${iban.slice(0, 4)} …${iban.slice(-3)}`;
 }
@@ -49,7 +49,7 @@ export function searchText(...parts) {
     .toLowerCase();
 }
 
-/** Last 3 digits only, as in the Teléfonos table: "CR00000000000000000001" → "…001". */
+/** Last 3 digits only, as in the Teléfonos table: "CR12015200000000000001" → "…001". */
 export function ibanTail(iban) {
   return `…${iban.slice(-3)}`;
 }
