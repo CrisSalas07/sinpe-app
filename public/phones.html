@@ -22,7 +22,6 @@
           <div>
             <h1 class="page-title">Teléfonos</h1>
             <p class="page-sub">Registrar un teléfono no lo afilia a SINPE Móvil.</p>
-            <a class="btn btn-primary" href="#registrar">Registrar teléfono</a>
           </div>
           <div class="stats">
             <div class="stat">
@@ -65,56 +64,6 @@
             <tbody id="rows"></tbody>
           </table>
         </div>
-      </div>
-
-      <!-- 10 Registrar teléfono -->
-      <div id="register-view" hidden>
-        <section class="card hero">
-          <div>
-            <h1 class="page-title">Registrar teléfono</h1>
-            <p class="page-sub">Registrar un teléfono no lo afilia a SINPE Móvil.</p>
-          </div>
-        </section>
-
-        <form id="register-form" class="card form-col">
-          <div class="alert alert-bad" role="alert" hidden></div>
-
-          <div class="field">
-            <label class="label" for="register-identification">Titular</label>
-            <select
-              class="select"
-              id="register-identification"
-              name="identification"
-              required
-            ></select>
-            <p class="field-error" hidden></p>
-          </div>
-
-          <div class="field">
-            <label class="label" for="register-number">Número celular</label>
-            <input
-              class="input"
-              id="register-number"
-              name="number"
-              inputmode="numeric"
-              minlength="8"
-              maxlength="8"
-              pattern="[0-9]{8}"
-              autocomplete="off"
-              required
-              aria-describedby="register-number-help"
-            />
-            <p class="help" id="register-number-help">
-              Exactamente 8 dígitos. Cada número tiene un solo titular.
-            </p>
-            <p class="field-error" hidden></p>
-          </div>
-
-          <div class="form-actions">
-            <a class="btn btn-secondary" href="#">Cancelar</a>
-            <button class="btn btn-primary" type="submit">Guardar teléfono</button>
-          </div>
-        </form>
       </div>
 
       <!-- 10 Editar teléfono -->

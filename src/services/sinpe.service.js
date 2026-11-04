@@ -5,7 +5,9 @@ import { ValidationError } from '../utils/errors.js';
 // The message itself is shown unchanged.
 const SP_MESSAGE_FIELDS = {
   'El telefono no existe': 'phoneId',
-  'El telefono ya esta afiliado': 'phoneId',
+  'El telefono no pertenece a un cliente de esta entidad': 'phoneId',
+  'El telefono ya esta afiliado en esta entidad. Use Cambiar cuenta.': 'phoneId',
+  'La cuenta no pertenece a esta entidad': 'accountId',
   'La cuenta no existe': 'accountId',
   'La cuenta no esta activa': 'accountId',
   'La cuenta no es en colones': 'accountId',
@@ -13,25 +15,32 @@ const SP_MESSAGE_FIELDS = {
   'El telefono ya esta afiliado a esa cuenta': 'accountId',
 };
 
+// This message names the other entity, so it cannot be a key of the map above.
+const ENROLLED_ELSEWHERE = 'El telefono ya esta afiliado en otra entidad';
+
+function fieldOf(message) {
+  return message.startsWith(ENROLLED_ELSEWHERE) ? 'phoneId' : SP_MESSAGE_FIELDS[message];
+}
+
 async function withFieldErrors(call) {
   try {
     await call();
   } catch (err) {
-    const field = err.sqlState === '45000' && SP_MESSAGE_FIELDS[err.sqlMessage];
+    const field = err.sqlState === '45000' && fieldOf(err.sqlMessage);
     if (field) throw new ValidationError(err.sqlMessage, field);
     throw err;
   }
 }
 
-export const list = () => sinpeRepository.findAll();
+export const list = (entityId) => sinpeRepository.findAll(entityId);
 
-export const stats = () => sinpeRepository.getStats();
+export const stats = (entityId) => sinpeRepository.getStats(entityId);
 
-export const enroll = (phoneId, accountId) =>
-  withFieldErrors(() => sinpeRepository.enroll(phoneId, accountId));
+export const enroll = (entityId, phoneId, accountId) =>
+  withFieldErrors(() => sinpeRepository.enroll(entityId, phoneId, accountId));
 
-export const unenroll = (number) => sinpeRepository.unenroll(number);
+export const unenroll = (entityId, number) => sinpeRepository.unenroll(entityId, number);
 
 // sp_cambiar_cuenta_sinpe deletes and re-inserts in one transaction: on error the original stays.
-export const changeAccount = (phoneId, accountId) =>
-  withFieldErrors(() => sinpeRepository.changeAccount(phoneId, accountId));
+export const changeAccount = (entityId, phoneId, accountId) =>
+  withFieldErrors(() => sinpeRepository.changeAccount(entityId, phoneId, accountId));

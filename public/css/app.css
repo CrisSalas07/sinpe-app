@@ -314,6 +314,10 @@ select {
   gap: 4px;
 }
 
+.form-section {
+  margin-top: 22px;
+}
+
 /* ---------- Tags ---------- */
 .tag {
   display: inline-block;

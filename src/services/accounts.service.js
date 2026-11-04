@@ -7,18 +7,19 @@ const SP_MESSAGE_FIELDS = {
   'El IBAN ya esta registrado': 'iban',
   'El cliente no existe': 'clientId',
   'El cliente esta inactivo': 'clientId',
-  'La entidad financiera no existe': 'bankId',
+  'El cliente no pertenece a esta entidad': 'clientId',
+  'El IBAN no corresponde a esta entidad': 'iban',
   'La moneda no existe en el catalogo': 'currency',
 };
 
-export const list = () => accountsRepository.findAll();
+export const list = (entityId) => accountsRepository.findAll(entityId);
 
-export const stats = () => accountsRepository.getStats();
+export const stats = (entityId) => accountsRepository.getStats(entityId);
 
 /** Registers through the stored procedure and returns the account as stored in the database. */
-export async function register(account) {
+export async function register(entityId, account) {
   try {
-    await accountsRepository.create(account);
+    await accountsRepository.create(entityId, account);
   } catch (err) {
     const field = err.sqlState === '45000' && SP_MESSAGE_FIELDS[err.sqlMessage];
     if (field) throw new ValidationError(err.sqlMessage, field);

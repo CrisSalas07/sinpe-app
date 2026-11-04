@@ -7,27 +7,27 @@ import {
 } from '../validators/sinpe.validator.js';
 
 export async function list(req, res) {
-  res.json(await sinpeService.list());
+  res.json(await sinpeService.list(req.session.user.entityId));
 }
 
 export async function stats(req, res) {
-  res.json(await sinpeService.stats());
+  res.json(await sinpeService.stats(req.session.user.entityId));
 }
 
 export async function enroll(req, res) {
   const { phoneId, accountId } = validateEnrollment(req.body);
-  await sinpeService.enroll(phoneId, accountId);
+  await sinpeService.enroll(req.session.user.entityId, phoneId, accountId);
   res.status(201).end();
 }
 
 export async function unenroll(req, res) {
-  await sinpeService.unenroll(validatePhoneNumber(req.params.number));
+  await sinpeService.unenroll(req.session.user.entityId, validatePhoneNumber(req.params.number));
   res.status(204).end();
 }
 
 export async function changeAccount(req, res) {
   const phoneId = validatePhoneIdParam(req.params.phoneId);
   const { accountId } = validateAccountChange(req.body);
-  await sinpeService.changeAccount(phoneId, accountId);
+  await sinpeService.changeAccount(req.session.user.entityId, phoneId, accountId);
   res.status(204).end();
 }

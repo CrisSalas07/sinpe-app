@@ -28,12 +28,9 @@ test('phone numbers have exactly 8 digits', () => {
 });
 
 test('register and owner change bodies', () => {
-  assert.deepEqual(validateNewPhone({ identification: 'UCR000020', number: '60000020' }), {
-    identification: 'UCR000020',
-    number: '60000020',
-  });
+  assert.deepEqual(validateNewPhone({ number: '60000020' }), { number: '60000020' });
   assert.equal(
-    fieldOf(() => validateNewPhone({ number: '60000020' })),
+    fieldOf(() => validateNewPhone({ number: '60000020', identification: 'UCR000020' })),
     'identification',
   );
   assert.equal(

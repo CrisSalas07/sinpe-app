@@ -11,13 +11,10 @@ export function validatePhoneNumber(value, field = 'number') {
   return value;
 }
 
-/** "Registrar teléfono": owner identification + number. */
+/** "Registrar teléfono": the owner is always the session client. */
 export function validateNewPhone(body) {
-  assertOnlyFields(body, ['identification', 'number']);
-  return {
-    identification: requireString(body, 'identification', 20, 'El titular'),
-    number: validatePhoneNumber(body.number),
-  };
+  assertOnlyFields(body, ['number']);
+  return { number: validatePhoneNumber(body.number) };
 }
 
 /** "Editar teléfono": the new owner's identification. */

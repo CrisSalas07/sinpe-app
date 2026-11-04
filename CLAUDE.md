@@ -120,7 +120,7 @@ README.md
 
 **Authentication and session**
 - `GET /api/auth/entities` (public, returns `[{ id, code, name }]` for the login selector), `POST /api/auth/login` (`{ entityId, username, password }`), `POST /api/auth/logout`, `GET /api/auth/me`.
-- Two roles, stored in `req.session.user = { role, entityId, entityCode, entityName, clientId, username, displayName }` (`clientId` is null for the admin); `/api/auth/me` returns that object:
+- Two roles, stored in `req.session.user = { role, entityId, entityCode, entityName, entityIbanCode, clientId, username, displayName }` (`clientId` is null for the admin); `/api/auth/me` returns that object:
   - **ADMIN:** if `username === APP_USER`, verify against `APP_PASSWORD_HASH` (`.env`). Same user for every entity: it administers the entity chosen at login.
   - **CLIENTE:** otherwise look up `cliente_entidad` by `(entityId, usuario)` and verify its `password_hash`. An INACTIVO client cannot log in.
   - **Always run scrypt, even if the user does not exist**, so response time does not reveal it.
@@ -335,7 +335,7 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 - **IBAN:** full or short (`CR00 …001`) **exactly where the Figma uses each one**.
   - Full: the Cuentas IBAN table, account cards, inputs, the Registrar cuenta form.
   - Short: the SINPE table, the Afiliar / Cambiar cuenta account selects, the Informes and Mis movimientos selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
-  - Tail only (`…001`): the "Cuenta afiliada" column of the Teléfonos table; "—" when not enrolled.
+  - Tail only (`…001`): the "Cuenta afiliada" column of the Teléfonos table; "—" when not enrolled; "Otra entidad (BN)" when enrolled in another entity. `/api/phones` never returns the IBAN of an account of another entity (Cristopher's decision: only `enrolled` and `enrolledBankCode`).
 - **Dates:** "Fecha de apertura" (Registrar cuenta) and Mis movimientos "Desde"/"Hasta" use the **native `<input type="date">`** (Cristopher's decision). It shows the date in the browser's locale format (e.g. 30/10/2026) instead of the Figma's 2026-11-09; that difference is accepted. The API always sends and receives `YYYY-MM-DD`.
 - **Selects of clients that receive something** (Titular in Registrar cuenta, Nuevo titular in Editar teléfono) list only ACTIVO clients of the session entity; the stored procedure / trigger remains the final validation.
 - **Money:**
@@ -351,7 +351,7 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 | ADMIN | `GET /api/clients` (with account and phone counts) · `GET /api/clients/stats` · `POST /api/clients` · `GET /api/accounts` · `GET /api/accounts/stats` · `POST /api/accounts` · `GET /api/catalogs/currencies` · `GET /api/phones` · `GET /api/phones/stats` · `PUT /api/phones/:number/owner` (**no POST**) · all of `/api/sinpe` (`GET`, `GET /stats`, `POST`, `DELETE /:number`, `PUT /:phoneId/account`) · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
 | CLIENTE | `GET /api/me/summary` · `GET /api/me/accounts` · `GET /api/me/recent-movements` (last 5) · `GET /api/me/movements?iban=&from=&to=` · `GET /api/me/phones` · `POST /api/me/phones` · `POST /api/transfers/sinpe` · `POST /api/transfers/iban` · `GET /api/transfers/recipient?number=` or `?iban=` · `GET /api/transfers/limit?iban=` (`limit`, `usedToday`, `available`) |
 
-- Every ADMIN query is filtered by the session entity (`WHERE … id_entidad = ?`).
+- Every ADMIN query is filtered by the session entity (`WHERE … id_entidad = ?`). A phone belongs to an entity through its owner (`cliente_entidad`). SINPE "Sin afiliar" counts the phones of the entity's clients not enrolled anywhere; a phone enrolled elsewhere is in neither stat of that screen. The enrollment history only shows events on accounts of the entity.
 - `recipient` returns **only** the compact name and the entity: no balance, status or third-party identification.
 - Each movements report reloads when its inputs change (the Figma has no "Consultar" button); the period defaults to the current month.
 - Validators: no `status` in clients and accounts, no `bankId` in accounts, `username` and `password` in clients, `originIban` instead of `originNumber` in the SINPE transfer, `entityId` in login.

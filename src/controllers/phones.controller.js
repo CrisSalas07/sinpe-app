@@ -1,26 +1,17 @@
 import * as phonesService from '../services/phones.service.js';
-import {
-  validateNewPhone,
-  validateOwnerChange,
-  validatePhoneNumber,
-} from '../validators/phones.validator.js';
+import { validateOwnerChange, validatePhoneNumber } from '../validators/phones.validator.js';
 
 export async function list(req, res) {
-  res.json(await phonesService.list());
+  res.json(await phonesService.list(req.session.user.entityId));
 }
 
 export async function stats(req, res) {
-  res.json(await phonesService.stats());
-}
-
-export async function create(req, res) {
-  await phonesService.register(validateNewPhone(req.body));
-  res.status(201).end();
+  res.json(await phonesService.stats(req.session.user.entityId));
 }
 
 export async function changeOwner(req, res) {
   const number = validatePhoneNumber(req.params.number);
   const { identification } = validateOwnerChange(req.body);
-  await phonesService.changeOwner(number, identification);
+  await phonesService.changeOwner(req.session.user.entityId, number, identification);
   res.status(204).end();
 }

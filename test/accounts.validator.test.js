@@ -6,12 +6,10 @@ import { requireDate, requireMoney } from '../src/validators/common.js';
 
 const valid = {
   clientId: 15,
-  bankId: 1,
   currency: 'CRC',
-  iban: 'cr00000000000000000037',
+  iban: 'cr12015200000000000037',
   balance: '50000',
   openedAt: '2026-11-09',
-  status: 'ACTIVA',
 };
 
 const fieldOf = (fn) => {
@@ -25,7 +23,7 @@ const fieldOf = (fn) => {
 };
 
 test('accepts a valid account and uppercases the IBAN', () => {
-  assert.equal(validateNewAccount(valid).iban, 'CR00000000000000000037');
+  assert.equal(validateNewAccount(valid).iban, 'CR12015200000000000037');
 });
 
 test('rejects bad account fields', () => {
@@ -36,7 +34,8 @@ test('rejects bad account fields', () => {
   assert.equal(bad({ balance: 50000 }), 'balance');
   assert.equal(bad({ balance: '-1' }), 'balance');
   assert.equal(bad({ openedAt: '2026-02-30' }), 'openedAt');
-  assert.equal(bad({ status: 'activa' }), 'status');
+  assert.equal(bad({ status: 'ACTIVA' }), 'status');
+  assert.equal(bad({ bankId: 1 }), 'bankId');
   assert.equal(bad({ extra: true }), 'extra');
 });
 

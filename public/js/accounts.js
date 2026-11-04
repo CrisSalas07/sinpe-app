@@ -16,7 +16,11 @@ const submit = form.querySelector('button[type="submit"]');
 
 let accounts = [];
 
-await initLayout('accounts', 'ADMIN');
+const user = await initLayout('accounts', 'ADMIN');
+// defaultValue survives form.reset().
+document.getElementById('entity').defaultValue = `${user.entityName} (${user.entityCode})`;
+document.getElementById('iban-help').textContent =
+  `22 caracteres: CR + 2 dígitos + 0${user.entityIbanCode} (código ${user.entityCode}) + 14 dígitos.`;
 window.addEventListener('hashchange', showView);
 search.addEventListener('input', renderRows);
 form.addEventListener('submit', onSubmit);
@@ -45,8 +49,6 @@ async function loadAccounts() {
       search: searchText(
         account.iban,
         fullName(account.holderNames, account.holderFirstSurname, account.holderSecondSurname),
-        account.bankName,
-        account.bankCode,
         account.currency,
         account.status,
       ),
@@ -64,9 +66,8 @@ async function loadAccounts() {
 
 async function loadFormOptions() {
   try {
-    const [clients, banks, currencies] = await Promise.all([
+    const [clients, currencies] = await Promise.all([
       api('/api/clients'),
-      api('/api/catalogs/banks'),
       api('/api/catalogs/currencies'),
     ]);
     // Only active clients can own a new account; sp_registrar_cuenta still validates it.
@@ -80,9 +81,6 @@ async function loadFormOptions() {
             `${client.identification} · ${fullName(client.names, client.firstSurname, client.secondSurname)}`,
           ),
         ),
-    );
-    form.elements.bankId.replaceChildren(
-      ...banks.map((bank) => el('option', { value: bank.id }, `${bank.name} (${bank.code})`)),
     );
     form.elements.currency.replaceChildren(
       ...currencies.map((currency) =>
@@ -104,7 +102,6 @@ function renderRows() {
         {},
         el('td', { class: 'mono' }, account.iban),
         el('td', {}, compactName(account.holderNames, account.holderFirstSurname)),
-        el('td', { class: 'clip', title: account.bankName }, account.bankName),
         el('td', {}, account.currency),
         el('td', {}, formatMoney(account.balance, account.currency)),
         el('td', {}, tag(titleCase(account.status), STATUS_TAGS[account.status])),
@@ -124,12 +121,10 @@ async function onSubmit(event) {
       method: 'POST',
       body: {
         clientId: Number(fields.clientId.value),
-        bankId: Number(fields.bankId.value),
         currency: fields.currency.value,
         iban: fields.iban.value.trim().toUpperCase(),
         balance: fields.balance.value.trim(),
         openedAt: fields.openedAt.value,
-        status: fields.status.value,
       },
     });
     // Back to the list, re-read from the database.

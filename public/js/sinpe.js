@@ -72,8 +72,8 @@ async function loadEnrollments() {
   }
 }
 
-// Selects list every phone and every account, each with its state (Cristopher's decision): the database triggers and
-// procedures reject invalid combinations, as the Figma error screens show.
+// Selects list every phone and account of the entity, each with its state (Cristopher's decision): the database
+// triggers and procedures reject invalid combinations, as the Figma error screens show.
 async function loadOptions() {
   try {
     const [phones, accounts] = await Promise.all([api('/api/phones'), api('/api/accounts')]);
@@ -84,7 +84,7 @@ async function loadOptions() {
         el(
           'option',
           { value: phone.id },
-          `${phone.number} · ${compactName(phone.ownerNames, phone.ownerFirstSurname)} · ${phone.enrolledIban ? 'afiliado' : 'no afiliado'}`,
+          `${phone.number} · ${compactName(phone.ownerNames, phone.ownerFirstSurname)} · ${phone.enrolled ? 'afiliado' : 'no afiliado'}`,
         ),
       ),
     );

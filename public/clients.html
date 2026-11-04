@@ -21,7 +21,7 @@
         <section class="card hero">
           <div>
             <h1 class="page-title">Clientes</h1>
-            <p class="page-sub">Personas registradas en JUNTAUCR.</p>
+            <p class="page-sub">Clientes registrados en esta entidad.</p>
             <a class="btn btn-primary" href="#registrar">Registrar cliente</a>
           </div>
           <div class="stats">
@@ -58,7 +58,7 @@
                 <th>Identificación</th>
                 <th>Nombre</th>
                 <th>Correo</th>
-                <th>Registro</th>
+                <th>Usuario</th>
                 <th>Cuentas</th>
                 <th>Teléfonos</th>
                 <th>Estado</th>
@@ -150,13 +150,44 @@
             <p class="field-error" id="email-error" hidden></p>
           </div>
 
-          <div class="field">
-            <label class="label" for="status">Estado</label>
-            <select class="select" id="status" name="status" aria-describedby="status-error">
-              <option value="ACTIVO">ACTIVO</option>
-              <option value="INACTIVO">INACTIVO</option>
-            </select>
-            <p class="field-error" id="status-error" hidden></p>
+          <p class="help" id="status-note"></p>
+
+          <h2 class="section-title form-section">Credenciales de acceso</h2>
+
+          <div class="row-2">
+            <div class="field">
+              <label class="label" for="username">Usuario</label>
+              <input
+                class="input"
+                id="username"
+                name="username"
+                minlength="3"
+                maxlength="50"
+                pattern="[a-z0-9._]{3,50}"
+                title="Entre 3 y 50 caracteres: minúsculas, números, punto o guion bajo."
+                autocomplete="off"
+                spellcheck="false"
+                required
+                aria-describedby="username-error"
+              />
+              <p class="field-error" id="username-error" hidden></p>
+            </div>
+            <div class="field">
+              <label class="label" for="password">Contraseña temporal</label>
+              <input
+                class="input"
+                id="password"
+                name="password"
+                type="password"
+                minlength="8"
+                maxlength="128"
+                autocomplete="new-password"
+                required
+                aria-describedby="password-help password-error"
+              />
+              <p class="help" id="password-help">El cliente la usará para iniciar sesión.</p>
+              <p class="field-error" id="password-error" hidden></p>
+            </div>
           </div>
 
           <div class="form-actions">

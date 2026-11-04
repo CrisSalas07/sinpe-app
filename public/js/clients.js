@@ -14,7 +14,9 @@ const submit = form.querySelector('button[type="submit"]');
 
 let clients = [];
 
-await initLayout('clients', 'ADMIN');
+const user = await initLayout('clients', 'ADMIN');
+document.getElementById('status-note').textContent =
+  `El cliente se crea con estado ACTIVO en ${user.entityName}.`;
 window.addEventListener('hashchange', showView);
 search.addEventListener('input', renderRows);
 form.addEventListener('submit', onSubmit);
@@ -42,6 +44,7 @@ async function loadClients() {
         client.identification,
         fullName(client.names, client.firstSurname, client.secondSurname),
         client.email,
+        client.username,
       ),
     }));
     document.getElementById('stat-total').textContent = stats.total;
@@ -66,7 +69,7 @@ function renderRows() {
         el('td', {}, client.identification),
         el('td', {}, compactName(client.names, client.firstSurname)),
         el('td', { class: 'clip', title: client.email }, client.email),
-        el('td', {}, client.registeredAt.slice(0, 10)),
+        el('td', {}, client.username),
         el('td', {}, client.accounts),
         el('td', {}, client.phones),
         el('td', {}, tag(titleCase(client.status), client.status === 'ACTIVO' ? 'ok' : 'neutral')),
@@ -90,7 +93,8 @@ async function onSubmit(event) {
         firstSurname: fields.firstSurname.value.trim(),
         secondSurname: fields.secondSurname.value.trim(),
         email: fields.email.value.trim(),
-        status: fields.status.value,
+        username: fields.username.value.trim(),
+        password: fields.password.value,
       },
     });
     // Back to the list, re-read from the database.

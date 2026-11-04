@@ -13,6 +13,7 @@ const sessionUser = (entity, fields) => ({
   entityId: entity.id,
   entityCode: entity.code,
   entityName: entity.name,
+  entityIbanCode: entity.ibanCode,
   ...fields,
 });
 

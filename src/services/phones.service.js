@@ -9,6 +9,7 @@ const SP_MESSAGE_FIELDS = {
   'El numero tiene que ser 8 digitos': 'number',
   'Este numero ya esta registrado': 'number',
   'El nuevo titular no está registrado': 'identification',
+  'El nuevo titular no pertenece a esta entidad': 'identification',
   'No se puede cambiar el titular de un teléfono afiliado': 'identification',
 };
 
@@ -22,14 +23,14 @@ async function withFieldErrors(call) {
   }
 }
 
-export const list = () => phonesRepository.findAll();
+export const list = (entityId) => phonesRepository.findAll(entityId);
 
-export const stats = () => phonesRepository.getStats();
+export const stats = (entityId) => phonesRepository.getStats(entityId);
 
-export async function register(phone) {
-  await withFieldErrors(() => phonesRepository.create(phone));
+export async function register(clientId, number) {
+  await withFieldErrors(() => phonesRepository.create(clientId, number));
 }
 
-export async function changeOwner(number, identification) {
-  await withFieldErrors(() => phonesRepository.changeOwner(number, identification));
+export async function changeOwner(entityId, number, identification) {
+  await withFieldErrors(() => phonesRepository.changeOwner(entityId, number, identification));
 }

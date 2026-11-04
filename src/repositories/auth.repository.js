@@ -11,7 +11,7 @@ export async function findEntities() {
 
 export async function findEntity(entityId) {
   const [rows] = await pool.query(
-    `SELECT id_entidad AS id, codigo AS code, nombre AS name
+    `SELECT id_entidad AS id, codigo AS code, nombre AS name, codigo_iban AS ibanCode
      FROM entidad_financiera
      WHERE id_entidad = ?`,
     [entityId],

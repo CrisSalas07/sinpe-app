@@ -21,7 +21,7 @@
         <section class="card hero">
           <div>
             <h1 class="page-title">Cuentas IBAN</h1>
-            <p class="page-sub">Cuentas de los clientes, por entidad y moneda.</p>
+            <p class="page-sub">Cuentas de los clientes de esta entidad, en colones o dólares.</p>
             <a class="btn btn-primary" href="#registrar">Registrar cuenta</a>
           </div>
           <div class="stats">
@@ -57,7 +57,6 @@
               <tr>
                 <th>IBAN</th>
                 <th>Titular</th>
-                <th>Entidad</th>
                 <th>Moneda</th>
                 <th>Saldo</th>
                 <th>Estado</th>
@@ -94,15 +93,8 @@
 
           <div class="row-2">
             <div class="field">
-              <label class="label" for="bankId">Entidad financiera</label>
-              <select
-                class="select"
-                id="bankId"
-                name="bankId"
-                required
-                aria-describedby="bankId-error"
-              ></select>
-              <p class="field-error" id="bankId-error" hidden></p>
+              <label class="label" for="entity">Entidad financiera</label>
+              <input class="input" id="entity" readonly />
             </div>
             <div class="field">
               <label class="label" for="currency">Moneda</label>
@@ -131,7 +123,7 @@
               required
               aria-describedby="iban-help iban-error"
             />
-            <p class="help" id="iban-help">Exactamente 22 caracteres. No puede repetirse.</p>
+            <p class="help" id="iban-help"></p>
             <p class="field-error" id="iban-error" hidden></p>
           </div>
 
@@ -165,21 +157,7 @@
             </div>
           </div>
 
-          <div class="field">
-            <label class="label" for="status">Estado</label>
-            <select
-              class="select"
-              id="status"
-              name="status"
-              aria-describedby="status-help status-error"
-            >
-              <option value="ACTIVA">ACTIVA</option>
-              <option value="INACTIVA">INACTIVA</option>
-              <option value="BLOQUEADA">BLOQUEADA</option>
-            </select>
-            <p class="help" id="status-help">ACTIVA, INACTIVA o BLOQUEADA.</p>
-            <p class="field-error" id="status-error" hidden></p>
-          </div>
+          <p class="help">La cuenta se crea con estado ACTIVA.</p>
 
           <div class="form-actions">
             <a class="btn btn-secondary" href="#">Cancelar</a>
