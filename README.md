@@ -4,8 +4,7 @@ A web app for the _Prueba corta – SINPE JUNTAUCR_ exercise (Databases course, 
 It manages clients, IBAN accounts, phone numbers, SINPE Móvil enrollments and money transfers on
 top of a MySQL database where **all business rules live in stored procedures and triggers**.
 
-The UI follows the Figma prototype (exports in `disenio/`), in Spanish, with a light and a dark
-theme.
+The UI follows the Figma prototype, in Spanish, with a single light theme.
 
 ## Requirements
 
@@ -83,7 +82,7 @@ HTTP request
 - `src/middlewares/`: session check (`requireAuth`), login rate limit, a single error handler.
 - `public/`: plain HTML, CSS and ES modules served by Express, one page per menu section.
   Shared modules: `api.js` (fetch wrapper, 401 → login), `dom.js` (safe DOM builders),
-  `format.js` (names, phones, IBAN, money), `layout.js` (header, theme, logout), `theme.js`.
+  `format.js` (names, phones, IBAN, money), `layout.js` (header, logout).
 
 ## Security
 
