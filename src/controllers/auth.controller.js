@@ -1,20 +1,22 @@
 import { promisify } from 'node:util';
-import { validateLogin } from '../validators/auth.validator.js';
+import { INVALID_CREDENTIALS, validateLogin } from '../validators/auth.validator.js';
 import * as authService from '../services/auth.service.js';
 
-const INVALID_CREDENTIALS = 'Usuario o contraseña incorrectos';
+export async function entities(req, res) {
+  res.json(await authService.listEntities());
+}
 
 export async function login(req, res) {
-  const { username, password } = validateLogin(req.body);
+  const user = await authService.login(validateLogin(req.body));
 
-  if (!(await authService.checkCredentials(username, password))) {
+  if (!user) {
     return res.status(401).json({ error: INVALID_CREDENTIALS });
   }
 
   // New session id on login prevents session fixation.
   await promisify(req.session.regenerate.bind(req.session))();
-  req.session.user = username;
-  res.json({ user: username });
+  req.session.user = user;
+  res.json(user);
 }
 
 export async function logout(req, res) {
@@ -24,5 +26,5 @@ export async function logout(req, res) {
 }
 
 export function me(req, res) {
-  res.json({ user: req.session.user });
+  res.json(req.session.user);
 }

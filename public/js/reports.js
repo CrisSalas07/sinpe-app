@@ -16,7 +16,7 @@ const phones = { iban: $('phones-iban'), rows: $('phones-rows'), alert: $('phone
 
 const currencyByIban = new Map();
 
-await initLayout('reports');
+await initLayout('reports', 'ADMIN');
 setCurrentMonth();
 for (const input of [movements.iban, movements.from, movements.to]) {
   input.addEventListener('change', loadMovements);

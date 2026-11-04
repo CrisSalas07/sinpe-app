@@ -20,7 +20,7 @@ let selected = null; // enrollment shown in the open modal
 const phonesById = new Map();
 const accountsById = new Map();
 
-await initLayout('sinpe');
+await initLayout('sinpe', 'ADMIN');
 window.addEventListener('hashchange', showView);
 search.addEventListener('input', renderRows);
 enrollForm.addEventListener('submit', onEnroll);

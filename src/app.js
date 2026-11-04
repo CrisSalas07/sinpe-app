@@ -3,7 +3,7 @@ import express from 'express';
 import session from 'express-session';
 import helmet from 'helmet';
 import { env } from './config/env.js';
-import { requireAuth } from './middlewares/auth.js';
+import { requireAuth, requireRole } from './middlewares/auth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { accountsRoutes } from './routes/accounts.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
@@ -13,6 +13,7 @@ import { phonesRoutes } from './routes/phones.routes.js';
 import { reportsRoutes } from './routes/reports.routes.js';
 import { sinpeRoutes } from './routes/sinpe.routes.js';
 import { transfersRoutes } from './routes/transfers.routes.js';
+import { ROLES } from './services/auth.service.js';
 
 const SESSION_IDLE_MS = 15 * 60 * 1000;
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH'];
@@ -68,13 +69,13 @@ app.use(express.static(path.join(import.meta.dirname, '..', 'public')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api', requireAuth);
-app.use('/api/clients', clientsRoutes);
-app.use('/api/accounts', accountsRoutes);
-app.use('/api/catalogs', catalogsRoutes);
-app.use('/api/phones', phonesRoutes);
-app.use('/api/sinpe', sinpeRoutes);
-app.use('/api/transfers', transfersRoutes);
-app.use('/api/reports', reportsRoutes);
+app.use('/api/clients', requireRole(ROLES.ADMIN), clientsRoutes);
+app.use('/api/accounts', requireRole(ROLES.ADMIN), accountsRoutes);
+app.use('/api/catalogs', requireRole(ROLES.ADMIN), catalogsRoutes);
+app.use('/api/phones', requireRole(ROLES.ADMIN), phonesRoutes);
+app.use('/api/sinpe', requireRole(ROLES.ADMIN), sinpeRoutes);
+app.use('/api/transfers', requireRole(ROLES.CLIENTE), transfersRoutes);
+app.use('/api/reports', requireRole(ROLES.ADMIN), reportsRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
 
 app.use(errorHandler);

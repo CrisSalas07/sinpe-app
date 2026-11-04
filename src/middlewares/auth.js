@@ -5,3 +5,13 @@ export function requireAuth(req, res, next) {
   }
   next();
 }
+
+/** Rejects a logged-in user of another role. Must run after requireAuth. */
+export function requireRole(role) {
+  return (req, res, next) => {
+    if (req.session.user.role !== role) {
+      return res.status(403).json({ error: 'No tiene permiso para esta accion' });
+    }
+    next();
+  };
+}

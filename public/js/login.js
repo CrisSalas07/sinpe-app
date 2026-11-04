@@ -1,9 +1,34 @@
 import { api } from './api.js';
+import { el } from './dom.js';
+import { HOME_PAGES } from './layout.js';
+
+const DEFAULT_ENTITY = 'BCR';
 
 const form = document.getElementById('login-form');
 const alertBox = document.getElementById('login-alert');
+const entity = document.getElementById('entityId');
 const password = document.getElementById('password');
 const submit = form.querySelector('button[type="submit"]');
+
+function showError(message) {
+  alertBox.textContent = message;
+  alertBox.hidden = false;
+}
+
+async function loadEntities() {
+  submit.disabled = true;
+  try {
+    const entities = await api('/api/auth/entities');
+    entity.replaceChildren(
+      ...entities.map((item) =>
+        el('option', { value: item.id, selected: item.code === DEFAULT_ENTITY }, item.name),
+      ),
+    );
+    submit.disabled = false;
+  } catch (err) {
+    showError(err.message);
+  }
+}
 
 document.getElementById('show-password').addEventListener('change', (event) => {
   password.type = event.target.checked ? 'text' : 'password';
@@ -15,14 +40,19 @@ form.addEventListener('submit', async (event) => {
   submit.disabled = true;
 
   try {
-    await api('/api/auth/login', {
+    const user = await api('/api/auth/login', {
       method: 'POST',
-      body: { username: form.username.value.trim(), password: password.value },
+      body: {
+        entityId: Number(entity.value),
+        username: form.username.value.trim(),
+        password: password.value,
+      },
     });
-    location.replace('/clients.html');
+    location.replace(HOME_PAGES[user.role]);
   } catch (err) {
-    alertBox.textContent = err.message;
-    alertBox.hidden = false;
+    showError(err.message);
     submit.disabled = false;
   }
 });
+
+loadEntities();

@@ -17,7 +17,7 @@ const editForm = document.getElementById('edit-form');
 let phones = [];
 let editingNumber = null;
 
-await initLayout('phones');
+await initLayout('phones', 'ADMIN');
 window.addEventListener('hashchange', showView);
 search.addEventListener('input', renderRows);
 registerForm.addEventListener('submit', onRegister);

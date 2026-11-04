@@ -42,7 +42,7 @@ let type = 'sinpe';
 const accountsByIban = new Map();
 const phonesByNumber = new Map();
 
-await initLayout('transfers');
+await initLayout('transfers', 'CLIENTE');
 for (const tab of form.querySelectorAll('.tab')) {
   tab.addEventListener('click', () => setType(tab.dataset.type));
 }

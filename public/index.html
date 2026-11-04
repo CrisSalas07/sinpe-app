@@ -31,6 +31,10 @@
         <form id="login-form" class="login-form">
           <div id="login-alert" class="alert alert-bad" role="alert" hidden></div>
           <div class="field">
+            <label class="label" for="entityId">Entidad financiera</label>
+            <select class="select" id="entityId" name="entityId" required></select>
+          </div>
+          <div class="field">
             <label class="label" for="username">Usuario</label>
             <input
               class="input"
@@ -60,7 +64,9 @@
           <button class="btn btn-primary btn-block" type="submit">Entrar</button>
         </form>
 
-        <p class="login-hint">Usuario de prueba: admin · Juntaucr2026</p>
+        <p class="login-hint">
+          Administrador: admin · Juntaucr2026 · Cliente: leonardo.aguilar · Cliente2026
+        </p>
       </section>
     </main>
   </body>

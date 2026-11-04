@@ -1,28 +1,47 @@
-// Shared header (brand, nav, operator, logout) and session check for every app page.
+// Shared header (brand, per-role nav, entity, role, user, logout), session and role check for every app page.
 import { api } from './api.js';
-import { el, icon } from './dom.js';
+import { el, icon, tag } from './dom.js';
 
-const PAGES = [
-  { id: 'clients', label: 'Clientes', href: '/clients.html' },
-  { id: 'accounts', label: 'Cuentas IBAN', href: '/accounts.html' },
-  { id: 'phones', label: 'Teléfonos', href: '/phones.html' },
-  { id: 'sinpe', label: 'SINPE Móvil', href: '/sinpe.html' },
-  { id: 'transfers', label: 'Transferencias', href: '/transfers.html' },
-  { id: 'reports', label: 'Historial e informes', href: '/reports.html' },
-];
+const MENUS = {
+  ADMIN: [
+    { id: 'clients', label: 'Clientes', href: '/clients.html' },
+    { id: 'accounts', label: 'Cuentas IBAN', href: '/accounts.html' },
+    { id: 'phones', label: 'Teléfonos', href: '/phones.html' },
+    { id: 'sinpe', label: 'SINPE Móvil', href: '/sinpe.html' },
+    { id: 'reports', label: 'Informes', href: '/reports.html' },
+  ],
+  CLIENTE: [
+    { id: 'home', label: 'Inicio', href: '/home.html' },
+    { id: 'my-phones', label: 'Mis teléfonos', href: '/my-phones.html' },
+    { id: 'transfers', label: 'Transferir', href: '/transfers.html' },
+    { id: 'movements', label: 'Mis movimientos', href: '/movements.html' },
+  ],
+};
 
-/** Builds the header with `activePage` highlighted, then checks the session (401 → login). */
-export async function initLayout(activePage) {
-  document.body.prepend(buildHeader(activePage));
-  const { user } = await api('/api/auth/me');
+const ROLE_LABELS = { ADMIN: 'Administrador', CLIENTE: 'Cliente' };
+
+export const HOME_PAGES = { ADMIN: '/clients.html', CLIENTE: '/home.html' };
+
+/**
+ * Checks the session (401 → login) and that `role` may open this page. Another role goes to its
+ * home page and this promise never resolves, so the script of the page stops here.
+ * What actually protects the data is requireRole on the server.
+ */
+export async function initLayout(activePage, role) {
+  const user = await api('/api/auth/me');
+  if (user.role !== role) {
+    location.replace(HOME_PAGES[user.role]);
+    return new Promise(() => {});
+  }
+  document.body.prepend(buildHeader(activePage, user));
   return user;
 }
 
-function buildHeader(activePage) {
+function buildHeader(activePage, user) {
   const nav = el(
     'nav',
     { class: 'nav', 'aria-label': 'Principal' },
-    ...PAGES.map((page) =>
+    ...MENUS[user.role].map((page) =>
       el(
         'a',
         { href: page.href, 'aria-current': page.id === activePage ? 'page' : null },
@@ -57,7 +76,9 @@ function buildHeader(activePage) {
     el(
       'div',
       { class: 'header-actions' },
-      el('span', { class: 'operator' }, 'Operador JUNTAUCR'),
+      el('span', { class: 'entity-pill' }, `${user.entityName} (${user.entityCode})`),
+      tag(ROLE_LABELS[user.role], 'neutral'),
+      el('span', { class: 'header-user' }, user.displayName),
       logoutButton,
     ),
   );

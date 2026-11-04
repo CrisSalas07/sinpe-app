@@ -16,7 +16,7 @@ const submit = form.querySelector('button[type="submit"]');
 
 let accounts = [];
 
-await initLayout('accounts');
+await initLayout('accounts', 'ADMIN');
 window.addEventListener('hashchange', showView);
 search.addEventListener('input', renderRows);
 form.addEventListener('submit', onSubmit);
