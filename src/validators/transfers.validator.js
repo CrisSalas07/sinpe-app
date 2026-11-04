@@ -13,11 +13,11 @@ function requireIban(body, field, label) {
   return iban;
 }
 
-/** Transfer by phone: origin and destination numbers, amount (string) and optional detail. */
+/** Transfer by phone: origin IBAN, destination number, amount (string) and optional detail. */
 export function validateSinpeTransfer(body) {
-  assertOnlyFields(body, ['originNumber', 'destinationNumber', 'amount', 'detail']);
+  assertOnlyFields(body, ['originIban', 'destinationNumber', 'amount', 'detail']);
   return {
-    originNumber: validatePhoneNumber(body.originNumber, 'originNumber'),
+    originIban: requireIban(body, 'originIban', 'La cuenta de origen'),
     destinationNumber: validatePhoneNumber(body.destinationNumber, 'destinationNumber'),
     amount: requireMoney(body, 'amount', 'El monto'),
     detail: optionalString(body, 'detail', DETAIL_MAX, 'El detalle'),
@@ -28,9 +28,28 @@ export function validateSinpeTransfer(body) {
 export function validateIbanTransfer(body) {
   assertOnlyFields(body, ['originIban', 'destinationIban', 'amount', 'detail']);
   return {
-    originIban: requireIban(body, 'originIban', 'El IBAN de origen'),
+    originIban: requireIban(body, 'originIban', 'La cuenta de origen'),
     destinationIban: requireIban(body, 'destinationIban', 'El IBAN de destino'),
     amount: requireMoney(body, 'amount', 'El monto'),
     detail: optionalString(body, 'detail', DETAIL_MAX, 'El detalle'),
   };
+}
+
+/** ?number= or ?iban=, exactly one. Errors name the form field they belong to. */
+export function validateRecipientQuery(query) {
+  assertOnlyFields(query, ['number', 'iban']);
+  if (query.iban !== undefined && query.number === undefined) {
+    const body = { destinationIban: query.iban };
+    return { iban: requireIban(body, 'destinationIban', 'El IBAN de destino') };
+  }
+  if (query.iban !== undefined) {
+    throw new ValidationError('Indique el teléfono o el IBAN, no ambos', 'number');
+  }
+  return { number: validatePhoneNumber(query.number, 'destinationNumber') };
+}
+
+/** ?iban= of the origin account. */
+export function validateLimitQuery(query) {
+  assertOnlyFields(query, ['iban']);
+  return requireIban({ originIban: query.iban }, 'originIban', 'La cuenta de origen');
 }

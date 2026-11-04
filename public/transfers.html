@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Transferencias · JUNTAUCR</title>
+    <title>Transferir · JUNTAUCR</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,7 +20,9 @@
       <section class="card hero">
         <div>
           <h1 class="page-title">Nueva transferencia</h1>
-          <p class="page-sub">Mueva dinero por teléfono afiliado o por IBAN.</p>
+          <p class="page-sub">
+            Envíe dinero desde una de sus cuentas a un teléfono SINPE Móvil o a una cuenta IBAN.
+          </p>
         </div>
       </section>
 
@@ -47,13 +49,14 @@
           <button type="button" class="tab" role="tab" data-type="iban">Por IBAN</button>
         </div>
 
+        <div class="field">
+          <label class="label" for="originIban">Cuenta de origen</label>
+          <select class="select" id="originIban" name="originIban"></select>
+          <p class="help" id="balance-help"></p>
+          <p class="field-error" hidden></p>
+        </div>
+
         <fieldset class="plain" data-type="sinpe">
-          <div class="field">
-            <label class="label" for="originNumber">Teléfono de origen</label>
-            <select class="select" id="originNumber" name="originNumber"></select>
-            <p class="help" data-balance></p>
-            <p class="field-error" hidden></p>
-          </div>
           <div class="field">
             <label class="label" for="destinationNumber">Teléfono de destino</label>
             <input
@@ -64,18 +67,12 @@
               maxlength="8"
               autocomplete="off"
             />
-            <p class="help">El número debe tener SINPE Móvil afiliado.</p>
+            <p class="help"></p>
             <p class="field-error" hidden></p>
           </div>
         </fieldset>
 
         <fieldset class="plain" data-type="iban" disabled hidden>
-          <div class="field">
-            <label class="label" for="originIban">Cuenta de origen</label>
-            <select class="select" id="originIban" name="originIban"></select>
-            <p class="help" data-balance></p>
-            <p class="field-error" hidden></p>
-          </div>
           <div class="field">
             <label class="label" for="destinationIban">IBAN de destino</label>
             <input
@@ -86,7 +83,7 @@
               autocomplete="off"
               spellcheck="false"
             />
-            <p class="help">Cuenta ACTIVA y en la misma moneda que el origen.</p>
+            <p class="help"></p>
             <p class="field-error" hidden></p>
           </div>
         </fieldset>
@@ -97,6 +94,7 @@
             <span class="currency" id="amount-currency" aria-hidden="true">₡</span>
             <input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" />
           </div>
+          <p class="help" id="amount-help"></p>
           <p class="field-error" hidden></p>
         </div>
 
@@ -116,19 +114,23 @@
           <button class="btn btn-primary" type="submit">Revisar transferencia</button>
         </div>
 
-        <hr class="divider" />
-        <p class="muted">Casos de prueba del enunciado</p>
-        <div class="chip-row">
-          <button type="button" class="chip" data-case="same-account">
-            8000-0001 → 7000-0001 (rechazada)
-          </button>
-          <button type="button" class="chip" data-case="allowed">
-            8000-0001 → 8000-0002 (permitida)
-          </button>
-          <button type="button" class="chip" data-case="other-currency">
-            IBAN 001 → IBAN 025 (otra moneda)
-          </button>
-          <button type="button" class="chip" data-case="insufficient">Saldo insuficiente</button>
+        <div id="test-cases" hidden>
+          <hr class="divider" />
+          <p class="muted">Casos de prueba del enunciado</p>
+          <div class="chip-row">
+            <button type="button" class="chip" data-case="same-account">
+              001 → 7000-0001 (misma cuenta)
+            </button>
+            <button type="button" class="chip" data-case="allowed">
+              001 → 8000-0002 (permitida)
+            </button>
+            <button type="button" class="chip" data-case="other-currency">
+              IBAN 001 → IBAN 025 (otra moneda)
+            </button>
+            <button type="button" class="chip" data-case="insufficient">
+              001 → 8000-0002 por ₡ 150 000 (saldo insuficiente)
+            </button>
+          </div>
         </div>
       </form>
 

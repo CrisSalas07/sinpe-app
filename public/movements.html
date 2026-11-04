@@ -16,7 +16,55 @@
   </head>
   <body>
     <main class="page">
-      <h1 class="page-title">Mis movimientos</h1>
+      <!-- C05 Mis movimientos -->
+      <section class="card hero">
+        <div>
+          <h1 class="page-title">Mis movimientos</h1>
+          <p class="page-sub">Movimientos de sus cuentas por período.</p>
+        </div>
+      </section>
+
+      <div class="stack">
+        <section class="card" aria-labelledby="movements-title">
+          <h2 class="section-title card-title" id="movements-title">Movimientos de una cuenta</h2>
+          <div class="alert alert-bad" role="alert" hidden id="movements-alert"></div>
+          <div class="field">
+            <label class="label" for="movements-iban">Cuenta</label>
+            <select class="select" id="movements-iban"></select>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label class="label" for="movements-from">Desde</label>
+              <input class="input" id="movements-from" type="date" />
+            </div>
+            <div class="field">
+              <label class="label" for="movements-to">Hasta</label>
+              <input class="input" id="movements-to" type="date" />
+            </div>
+          </div>
+          <table class="table report-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Contraparte</th>
+                <th>Monto</th>
+              </tr>
+            </thead>
+            <tbody id="movements-rows"></tbody>
+          </table>
+          <dl class="kv kv-plain">
+            <div class="kv-row">
+              <dt>Total enviado en el período</dt>
+              <dd id="total-sent"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Total recibido en el período</dt>
+              <dd id="total-received"></dd>
+            </div>
+          </dl>
+        </section>
+      </div>
     </main>
   </body>
 </html>

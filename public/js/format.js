@@ -67,3 +67,21 @@ export function fromCents(cents) {
   const abs = Math.abs(cents);
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
+
+const ACCOUNT_TYPES = { CRC: 'Ahorros colones', USD: 'Ahorros dólares' };
+
+/** "CRC" → "Ahorros colones". The schema has no account types: it follows the currency. */
+export function accountType(currency) {
+  return ACCOUNT_TYPES[currency];
+}
+
+/** "CR12 …001 · Ahorros colones". */
+export function accountLabel(iban, currency) {
+  return `${shortIban(iban)} · ${accountType(currency)}`;
+}
+
+/** Movements bring "NOMBRES PRIMER_APELLIDO": first name + surname, as elsewhere. */
+export function counterpartName(fullText) {
+  const words = fullText.split(' ');
+  return titleCase(`${words[0]} ${words.at(-1)}`);
+}

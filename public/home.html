@@ -16,7 +16,56 @@
   </head>
   <body>
     <main class="page">
-      <h1 class="page-title">Inicio</h1>
+      <!-- C01 Inicio -->
+      <section class="card hero">
+        <div>
+          <h1 class="page-title" id="greeting"></h1>
+          <p class="page-sub">Sus cuentas y últimos movimientos.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/transfers.html">Transferir</a>
+            <a class="btn btn-secondary" href="/my-phones.html#registrar">Registrar teléfono</a>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-value" id="stat-accounts"></div>
+            <div class="stat-label">Cuentas</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-phones"></div>
+            <div class="stat-label">Teléfonos</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-enrolled"></div>
+            <div class="stat-label">Afiliados</div>
+          </div>
+        </div>
+      </section>
+
+      <div id="page-alert" class="alert alert-bad" role="alert" hidden></div>
+
+      <div class="section-head">
+        <h2 class="section-title">Mis cuentas</h2>
+      </div>
+      <div class="acct-grid" id="accounts"></div>
+
+      <div class="section-head">
+        <h2 class="section-title">Últimos movimientos</h2>
+        <a class="btn btn-secondary" href="/movements.html">Ver todos</a>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Contraparte</th>
+              <th>Monto</th>
+            </tr>
+          </thead>
+          <tbody id="movement-rows"></tbody>
+        </table>
+      </div>
     </main>
   </body>
 </html>

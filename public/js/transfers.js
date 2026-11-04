@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { clearFormErrors, el, icon, showFormError, tag } from './dom.js';
 import {
-  compactName,
+  accountLabel,
   formatMoney,
   formatPhone,
   fromCents,
@@ -15,18 +15,25 @@ const STATUS_TAGS = { ACTIVA: 'ok', INACTIVA: 'neutral', BLOQUEADA: 'bad' };
 const CURRENCY_SYMBOLS = { CRC: '₡', USD: '$' };
 const MONEY_PATTERN = /^\d{1,13}(\.\d{1,2})?$/;
 const IBAN_PATTERN = /^CR[0-9]{20}$/;
+const PHONE_PATTERN = /^[0-9]{8}$/;
+const HELP = {
+  destinationNumber: 'El número debe tener SINPE Móvil afiliado.',
+  destinationIban: 'Cuenta ACTIVA y en la misma moneda que el origen.',
+};
 
-// "Casos de prueba del enunciado": each chip prefills the form (it never submits).
+// "Casos de prueba del enunciado", for leonardo.aguilar in the BCR: each chip prefills the form.
+const ACCOUNT_001 = 'CR12015200000000000001';
+const ACCOUNT_025 = 'CR12016100000000000025';
 const TEST_CASES = {
-  'same-account': { type: 'sinpe', origin: '80000001', destination: '70000001', amount: '1000' },
-  allowed: { type: 'sinpe', origin: '80000001', destination: '80000002', amount: '15000' },
+  'same-account': { type: 'sinpe', origin: ACCOUNT_001, destination: '70000001', amount: '1000' },
+  allowed: { type: 'sinpe', origin: ACCOUNT_001, destination: '80000002', amount: '15000' },
   'other-currency': {
     type: 'iban',
-    origin: 'CR00000000000000000001',
-    destination: 'CR00000000000000000025',
+    origin: ACCOUNT_001,
+    destination: ACCOUNT_025,
     amount: '15000',
   },
-  insufficient: { type: 'sinpe', origin: '80000011', destination: '80000002', amount: '100000' },
+  insufficient: { type: 'sinpe', origin: ACCOUNT_001, destination: '80000002', amount: '150000' },
 };
 
 const form = document.getElementById('data-form');
@@ -37,25 +44,31 @@ const receipt = document.getElementById('receipt');
 const confirmButton = document.getElementById('confirm');
 const backButton = document.getElementById('back');
 const loadAlert = document.getElementById('load-alert');
+const limitHelp = document.getElementById('amount-help');
 
 let type = 'sinpe';
-const accountsByIban = new Map();
-const phonesByNumber = new Map();
+let accounts = [];
+let recipient = null; // { name, entity } of the current destination, once found
+let lookups = 0; // only the answer to the latest request counts
+let limitLookups = 0;
 
-await initLayout('transfers', 'CLIENTE');
+const user = await initLayout('transfers', 'CLIENTE');
+document.getElementById('test-cases').hidden = !(
+  user.username === 'leonardo.aguilar' && user.entityCode === 'BCR'
+);
+
 for (const tab of form.querySelectorAll('.tab')) {
   tab.addEventListener('click', () => setType(tab.dataset.type));
 }
 for (const chip of form.querySelectorAll('[data-case]')) {
   chip.addEventListener('click', () => applyTestCase(TEST_CASES[chip.dataset.case]));
 }
-for (const name of ['originNumber', 'originIban', 'destinationNumber', 'destinationIban']) {
-  fields[name].addEventListener('input', renderCards);
-}
+fields.originIban.addEventListener('change', renderOrigin);
 fields.destinationNumber.addEventListener('input', () => {
   fields.destinationNumber.value = fields.destinationNumber.value.replace(/\D/g, '');
-  renderCards();
+  lookUpRecipient();
 });
+fields.destinationIban.addEventListener('input', lookUpRecipient);
 fields.amount.addEventListener('input', () => {
   fields.amount.value = fields.amount.value.replace(/[^\d.]/g, '');
 });
@@ -68,18 +81,13 @@ document.getElementById('new-transfer').addEventListener('click', () => {
   setStep(1);
 });
 
-await loadData();
+await loadAccounts();
 setType('sinpe');
 setStep(1);
 
-async function loadData() {
+async function loadAccounts() {
   try {
-    const [accounts, phones] = await Promise.all([api('/api/accounts'), api('/api/phones')]);
-    accountsByIban.clear();
-    phonesByNumber.clear();
-    for (const account of accounts) accountsByIban.set(account.iban, account);
-    for (const phone of phones) phonesByNumber.set(phone.number, phone);
-    fillOriginSelects(accounts, phones);
+    accounts = await api('/api/me/accounts');
     loadAlert.hidden = true;
   } catch (err) {
     loadAlert.textContent = err.message;
@@ -87,31 +95,20 @@ async function loadData() {
   }
 }
 
-/** Repopulates both origin selects, keeping the current selection. */
-function fillOriginSelects(accounts, phones) {
-  const keep = { phone: fields.originNumber.value, iban: fields.originIban.value };
-  fields.originNumber.replaceChildren(
-    ...phones
-      .filter((phone) => phone.enrolledIban)
-      .map((phone) =>
-        el(
-          'option',
-          { value: phone.number },
-          `${formatPhone(phone.number)} · ${compactName(phone.ownerNames, phone.ownerFirstSurname)} · ${shortIban(phone.enrolledIban)}`,
-        ),
-      ),
-  );
+/** "Por teléfono" only lists CRC accounts: SINPE Móvil only works in colones. Keeps the selection. */
+function fillOriginSelect() {
+  const keep = fields.originIban.value;
+  const usable = type === 'sinpe' ? accounts.filter((a) => a.currency === 'CRC') : accounts;
   fields.originIban.replaceChildren(
-    ...accounts.map((account) =>
+    ...usable.map((account) =>
       el(
         'option',
         { value: account.iban },
-        `${shortIban(account.iban)} · ${compactName(account.holderNames, account.holderFirstSurname)} · ${account.currency}`,
+        `${accountLabel(account.iban, account.currency)} · ${formatMoney(account.balance, account.currency)}`,
       ),
     ),
   );
-  if (keep.phone) fields.originNumber.value = keep.phone;
-  if (keep.iban) fields.originIban.value = keep.iban;
+  if (usable.some((account) => account.iban === keep)) fields.originIban.value = keep;
 }
 
 // ---------- Tabs, steps and test cases ----------
@@ -127,7 +124,9 @@ function setType(newType) {
     group.hidden = group.disabled;
   }
   clearFormErrors(form, formAlert);
-  renderCards();
+  fillOriginSelect();
+  renderOrigin();
+  lookUpRecipient();
 }
 
 function setStep(step) {
@@ -147,93 +146,144 @@ function setStep(step) {
 function applyTestCase(testCase) {
   form.reset();
   setType(testCase.type);
-  if (testCase.type === 'sinpe') {
-    fields.originNumber.value = testCase.origin;
-    fields.destinationNumber.value = testCase.destination;
-  } else {
-    fields.originIban.value = testCase.origin;
-    fields.destinationIban.value = testCase.destination;
-  }
+  fields.originIban.value = testCase.origin;
+  destinationField().value = testCase.destination;
   fields.amount.value = testCase.amount;
   setStep(1);
-  renderCards();
+  renderOrigin();
+  lookUpRecipient();
 }
 
-// ---------- "Desde" / "Hacia" cards ----------
+// ---------- "Desde": the client's own account ----------
 
 function originAccount() {
-  if (type === 'iban') return accountsByIban.get(fields.originIban.value);
-  const phone = phonesByNumber.get(fields.originNumber.value);
-  return phone && accountsByIban.get(phone.enrolledIban);
+  return accounts.find((account) => account.iban === fields.originIban.value);
 }
 
-function destination() {
-  if (type === 'iban') {
-    return { account: accountsByIban.get(fields.destinationIban.value.trim().toUpperCase()) };
+function renderOrigin() {
+  const origin = originAccount();
+  const card = document.getElementById('card-from');
+  if (origin) {
+    card.replaceChildren(
+      el('div', { class: 'acct-label' }, 'Desde'),
+      el('div', { class: 'acct-name' }, user.displayName),
+      el('div', { class: 'mono acct-iban' }, origin.iban),
+      el('div', { class: 'acct-amount' }, formatMoney(origin.balance, origin.currency)),
+      el(
+        'div',
+        { class: 'tags' },
+        tag(titleCase(origin.status), STATUS_TAGS[origin.status]),
+        tag(origin.currency, 'neutral'),
+      ),
+    );
+  } else {
+    renderEmptyCard(card, 'Desde');
   }
-  const phone = phonesByNumber.get(fields.destinationNumber.value);
-  return { phone, account: phone && accountsByIban.get(phone.enrolledIban) };
+
+  const currency = origin?.currency ?? 'CRC';
+  document.getElementById('amount-currency').textContent = CURRENCY_SYMBOLS[currency];
+  document.getElementById('balance-help').textContent = origin
+    ? `Saldo disponible: ${formatMoney(origin.balance, currency)}`
+    : '';
+  loadLimit(origin);
 }
 
-function accountCard(container, label, account) {
-  container.replaceChildren(
-    el('div', { class: 'acct-label' }, label),
-    el('div', { class: 'acct-name' }, compactName(account.holderNames, account.holderFirstSurname)),
-    el('div', { class: 'mono acct-iban' }, account.iban),
-    el('div', { class: 'acct-amount' }, formatMoney(account.balance, account.currency)),
-    el(
-      'div',
-      { class: 'tags' },
-      tag(titleCase(account.status), STATUS_TAGS[account.status]),
-      tag(account.currency, 'neutral'),
-    ),
-  );
-}
-
-// A registered phone without SINPE Móvil (07 Error · teléfono no afiliado).
-function unenrolledPhoneCard(container, phone) {
-  container.replaceChildren(
-    el('div', { class: 'acct-label' }, 'Hacia'),
-    el('div', { class: 'acct-name' }, compactName(phone.ownerNames, phone.ownerFirstSurname)),
-    el('div', { class: 'mono acct-iban' }, `Teléfono ${formatPhone(phone.number)}`),
-    el('div', { class: 'acct-amount' }, '—'),
-    el('div', { class: 'tags' }, tag('Sin afiliar', 'bad')),
-  );
-}
-
-function emptyCard(container, label) {
-  container.replaceChildren(
+function renderEmptyCard(card, label) {
+  card.replaceChildren(
     el('div', { class: 'acct-label' }, label),
     el('div', { class: 'acct-amount acct-empty' }, '—'),
   );
 }
 
-function renderCards() {
-  const from = document.getElementById('card-from');
-  const to = document.getElementById('card-to');
-  const origin = originAccount();
-  if (origin) accountCard(from, 'Desde', origin);
-  else emptyCard(from, 'Desde');
+/** The daily limit only applies to SINPE Móvil. */
+async function loadLimit(origin) {
+  const lookup = ++limitLookups;
+  limitHelp.textContent = '';
+  if (type !== 'sinpe' || !origin) return;
+  try {
+    const { available } = await api(
+      `/api/transfers/limit?${new URLSearchParams({ iban: origin.iban })}`,
+    );
+    if (lookup !== limitLookups) return;
+    limitHelp.textContent = `Disponible hoy: ${formatMoney(available, 'CRC')} de su límite diario.`;
+  } catch (err) {
+    console.error(err);
+  }
+}
 
-  const target = destination();
-  if (target.account) accountCard(to, 'Hacia', target.account);
-  else if (target.phone) unenrolledPhoneCard(to, target.phone);
-  else emptyCard(to, 'Hacia');
+// ---------- "Hacia": only the name and entity of the recipient ----------
 
-  const currency = origin?.currency ?? 'CRC';
-  document.getElementById('amount-currency').textContent = CURRENCY_SYMBOLS[currency];
-  for (const help of form.querySelectorAll('[data-balance]')) {
-    help.textContent = origin ? `Saldo disponible: ${formatMoney(origin.balance, currency)}` : '';
+function destinationField() {
+  return type === 'sinpe' ? fields.destinationNumber : fields.destinationIban;
+}
+
+function destinationValue() {
+  return destinationField().value.trim().toUpperCase();
+}
+
+function isComplete(value) {
+  return (type === 'sinpe' ? PHONE_PATTERN : IBAN_PATTERN).test(value);
+}
+
+function renderDestination() {
+  const card = document.getElementById('card-to');
+  const input = destinationField();
+  const help = input.closest('.field').querySelector('.help');
+  if (!recipient) {
+    help.textContent = HELP[input.name];
+    return renderEmptyCard(card, 'Hacia');
+  }
+  help.textContent = `Destinatario: ${recipient.name} · ${recipient.entity}`;
+  const value = destinationValue();
+  card.replaceChildren(
+    el('div', { class: 'acct-label' }, 'Hacia'),
+    el('div', { class: 'acct-name' }, recipient.name),
+    el(
+      'div',
+      { class: 'mono acct-iban' },
+      type === 'sinpe' ? `Teléfono ${formatPhone(value)}` : value,
+    ),
+    el('div', { class: 'tags' }, tag(recipient.entity, 'neutral')),
+  );
+}
+
+function setDestinationError(message) {
+  const input = destinationField();
+  const field = input.closest('.field');
+  const error = field.querySelector('.field-error');
+  if (message) input.setAttribute('aria-invalid', 'true');
+  else input.removeAttribute('aria-invalid');
+  error.textContent = message ?? '';
+  error.hidden = !message;
+  field.querySelector('.help').hidden = Boolean(message);
+}
+
+async function lookUpRecipient() {
+  const lookup = ++lookups;
+  const value = destinationValue();
+  recipient = null;
+  setDestinationError(null);
+  renderDestination();
+  if (!isComplete(value)) return;
+
+  const param = type === 'sinpe' ? { number: value } : { iban: value };
+  try {
+    const found = await api(`/api/transfers/recipient?${new URLSearchParams(param)}`);
+    if (lookup !== lookups) return;
+    recipient = found;
+    renderDestination();
+  } catch (err) {
+    if (lookup === lookups) setDestinationError(err.message);
   }
 }
 
 // ---------- Step 1 → 2: format checks only; business rules are checked by the database ----------
 
 function formatError() {
-  if (type === 'sinpe' && !/^[0-9]{8}$/.test(fields.destinationNumber.value)) {
+  if (type === 'sinpe' && !PHONE_PATTERN.test(destinationValue())) {
     return { field: 'destinationNumber', message: 'El número debe tener exactamente 8 dígitos.' };
   }
-  if (type === 'iban' && !IBAN_PATTERN.test(fields.destinationIban.value.trim().toUpperCase())) {
+  if (type === 'iban' && !IBAN_PATTERN.test(destinationValue())) {
     return { field: 'destinationIban', message: 'El IBAN debe ser CR seguido de 20 dígitos.' };
   }
   const amount = fields.amount.value.trim();
@@ -245,31 +295,29 @@ function formatError() {
   return null;
 }
 
+function destinationText() {
+  const value = destinationValue();
+  const shown = type === 'sinpe' ? formatPhone(value) : shortIban(value);
+  return recipient ? `${shown} · ${recipient.name} (${recipient.entity})` : shown;
+}
+
 function onReview(event) {
   event.preventDefault();
   clearFormErrors(form, formAlert);
   const origin = originAccount();
+  if (!origin) {
+    return showFormError(form, formAlert, {
+      field: 'originIban',
+      message: 'Seleccione la cuenta de origen.',
+    });
+  }
   const error = formatError();
   if (error) return showFormError(form, formAlert, error);
-  if (!origin) return showFormError(form, formAlert, { message: 'Seleccione el origen.' });
 
   const amount = fields.amount.value.trim();
-  const target = destination();
-  const destinationText =
-    type === 'sinpe'
-      ? [formatPhone(fields.destinationNumber.value), target.phone && ownerOf(target.phone)]
-      : [
-          shortIban(fields.destinationIban.value.trim().toUpperCase()),
-          target.account && holderOf(target.account),
-        ];
-  const originText =
-    type === 'sinpe'
-      ? `${formatPhone(fields.originNumber.value)} · ${holderOf(origin)}`
-      : `${shortIban(origin.iban)} · ${holderOf(origin)}`;
-
   document.getElementById('review-rows').replaceChildren(
-    kvRow(type === 'sinpe' ? 'Teléfono de origen' : 'Cuenta de origen', originText),
-    kvRow('Destino', destinationText.filter(Boolean).join(' · ')),
+    kvRow('Cuenta de origen', accountLabel(origin.iban, origin.currency)),
+    kvRow('Destino', destinationText()),
     kvRow('Monto', formatMoney(amount, origin.currency)),
     // Only when the user wrote one, so an empty detail looks exactly like the Figma.
     ...detailRow(fields.detail.value.trim()),
@@ -278,16 +326,9 @@ function onReview(event) {
       formatMoney(fromCents(toCents(origin.balance) - toCents(amount)), origin.currency),
     ),
     kvRow('Tipo', type === 'sinpe' ? 'SINPE Móvil' : 'IBAN'),
+    kvRow('Comisión', formatMoney('0', origin.currency)),
   );
   setStep(2);
-}
-
-function ownerOf(phone) {
-  return compactName(phone.ownerNames, phone.ownerFirstSurname);
-}
-
-function holderOf(account) {
-  return compactName(account.holderNames, account.holderFirstSurname);
 }
 
 function kvRow(label, value) {
@@ -305,33 +346,26 @@ async function onConfirm() {
   // Both buttons stay disabled until the server answers: a transfer must never be sent twice.
   confirmButton.disabled = true;
   backButton.disabled = true;
-  const amount = fields.amount.value.trim();
-  const detail = fields.detail.value.trim();
-  const request =
-    type === 'sinpe'
-      ? api('/api/transfers/sinpe', {
-          method: 'POST',
-          body: {
-            originNumber: fields.originNumber.value,
-            destinationNumber: fields.destinationNumber.value,
-            amount,
-            detail,
-          },
-        })
-      : api('/api/transfers/iban', {
-          method: 'POST',
-          body: {
-            originIban: fields.originIban.value,
-            destinationIban: fields.destinationIban.value.trim().toUpperCase(),
-            amount,
-            detail,
-          },
-        });
+  const common = {
+    originIban: fields.originIban.value,
+    amount: fields.amount.value.trim(),
+    detail: fields.detail.value.trim(),
+  };
 
   try {
-    const result = await request;
-    await loadData(); // cards show the balances stored after the transfer
-    renderCards();
+    const result =
+      type === 'sinpe'
+        ? await api('/api/transfers/sinpe', {
+            method: 'POST',
+            body: { ...common, destinationNumber: destinationValue() },
+          })
+        : await api('/api/transfers/iban', {
+            method: 'POST',
+            body: { ...common, destinationIban: destinationValue() },
+          });
+    await loadAccounts(); // the select and the card show the balances stored after the transfer
+    fillOriginSelect();
+    renderOrigin();
     showReceipt(result);
     setStep(3);
   } catch (err) {

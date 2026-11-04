@@ -16,7 +16,75 @@
   </head>
   <body>
     <main class="page">
-      <h1 class="page-title">Mis teléfonos</h1>
+      <!-- C02 Mis teléfonos -->
+      <div id="list-view">
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Mis teléfonos</h1>
+            <p class="page-sub">Registrar un teléfono no lo afilia a SINPE Móvil.</p>
+            <a class="btn btn-primary" href="#registrar">Registrar teléfono</a>
+          </div>
+        </section>
+
+        <div id="list-alert" class="alert alert-bad" role="alert" hidden></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>SINPE Móvil</th>
+                <th>Cuenta afiliada</th>
+                <th>Registrado</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- C03 Registrar teléfono -->
+      <div id="form-view" hidden>
+        <section class="card hero">
+          <div>
+            <h1 class="page-title">Registrar teléfono</h1>
+            <p class="page-sub">Registrar un teléfono no lo afilia a SINPE Móvil.</p>
+          </div>
+        </section>
+
+        <form id="phone-form" class="card form-col">
+          <div class="alert alert-bad" role="alert" hidden></div>
+
+          <div class="field">
+            <label class="label" for="owner">Titular</label>
+            <input class="input" id="owner" name="owner" readonly />
+          </div>
+
+          <div class="field">
+            <label class="label" for="number">Número celular</label>
+            <input
+              class="input"
+              id="number"
+              name="number"
+              inputmode="numeric"
+              minlength="8"
+              maxlength="8"
+              pattern="[0-9]{8}"
+              autocomplete="off"
+              required
+              aria-describedby="number-help"
+            />
+            <p class="help" id="number-help">
+              Exactamente 8 dígitos. Cada número tiene un solo titular.
+            </p>
+            <p class="field-error" hidden></p>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn btn-secondary" href="#">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Guardar teléfono</button>
+          </div>
+        </form>
+      </div>
     </main>
   </body>
 </html>

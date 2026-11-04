@@ -1,28 +1,5 @@
 import { pool } from '../config/db.js';
 
-/** sp_consultar_movimientos returns two result sets: the movements and the totals. */
-export async function findMovements(clientId, entityId, iban, from, to) {
-  const [[movements, [totals]]] = await pool.query('CALL sp_consultar_movimientos(?, ?, ?, ?, ?)', [
-    clientId,
-    entityId,
-    iban,
-    from,
-    to,
-  ]);
-  return {
-    movements: movements.map((row) => ({
-      id: row.id_transferencia,
-      date: row.fecha,
-      type: row.tipo,
-      direction: row.movimiento,
-      counterpartIban: row.iban_contraparte,
-      counterpart: row.contraparte,
-      amount: row.monto,
-    })),
-    totals: { sent: totals.total_enviado, received: totals.total_recibido },
-  };
-}
-
 /** Every AFILIACION / DESAFILIACION event of a phone on accounts of the entity, oldest first. */
 export async function findEnrollmentHistory(entityId, number) {
   const [rows] = await pool.query(

@@ -314,6 +314,27 @@ select {
   gap: 4px;
 }
 
+.help:empty {
+  display: none;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.acct-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.acct-iban + .tags {
+  margin-top: 8px;
+}
+
 .form-section {
   margin-top: 22px;
 }
@@ -817,10 +838,6 @@ fieldset.plain {
 fieldset.plain + .field,
 fieldset.plain .field:first-child {
   margin-top: 16px;
-}
-
-fieldset.plain:first-of-type .field:first-child {
-  margin-top: 0;
 }
 
 .acct-name {

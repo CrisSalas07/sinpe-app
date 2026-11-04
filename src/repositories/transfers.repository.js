@@ -36,20 +36,82 @@ async function callAndReadReceipt(callSql, params) {
   }
 }
 
-export function transferBySinpe({ originNumber, destinationNumber, amount, detail }) {
-  return callAndReadReceipt('CALL sp_transferir_sinpe(?, ?, ?, ?)', [
-    originNumber,
+export function transferBySinpe(
+  { entityId, clientId },
+  { originIban, destinationNumber, amount, detail },
+) {
+  return callAndReadReceipt('CALL sp_transferir_sinpe(?, ?, ?, ?, ?, ?)', [
+    entityId,
+    clientId,
+    originIban,
     destinationNumber,
     amount,
     detail,
   ]);
 }
 
-export function transferByIban({ originIban, destinationIban, amount, detail }) {
-  return callAndReadReceipt('CALL sp_transferir_iban(?, ?, ?, ?)', [
+export function transferByIban(
+  { entityId, clientId },
+  { originIban, destinationIban, amount, detail },
+) {
+  return callAndReadReceipt('CALL sp_transferir_iban(?, ?, ?, ?, ?, ?)', [
+    entityId,
+    clientId,
     originIban,
     destinationIban,
     amount,
     detail,
   ]);
+}
+
+/** Owner of a phone; entity is null if it has no SINPE Móvil enrollment. */
+export async function findRecipientByNumber(number) {
+  const [rows] = await pool.query(
+    `SELECT c.nombres AS names, c.primer_apellido AS firstSurname, e.codigo AS entity
+     FROM telefono_cliente t
+     JOIN cliente c ON c.id_cliente = t.id_cliente
+     LEFT JOIN afiliacion_sinpe af ON af.id_telefono = t.id_telefono
+     LEFT JOIN cuenta_iban cu ON cu.id_cuenta = af.id_cuenta
+     LEFT JOIN entidad_financiera e ON e.id_entidad = cu.id_entidad
+     WHERE t.numero = ?`,
+    [number],
+  );
+  return rows[0] ?? null;
+}
+
+export async function findRecipientByIban(iban) {
+  const [rows] = await pool.query(
+    `SELECT c.nombres AS names, c.primer_apellido AS firstSurname, e.codigo AS entity
+     FROM cuenta_iban cu
+     JOIN cliente c ON c.id_cliente = cu.id_cliente
+     JOIN entidad_financiera e ON e.id_entidad = cu.id_entidad
+     WHERE cu.iban = ?`,
+    [iban],
+  );
+  return rows[0] ?? null;
+}
+
+/** Daily SINPE Móvil limit of an account of the client, or null. DECIMAL math stays in SQL. */
+export async function findDailyLimit(entityId, clientId, iban) {
+  const [rows] = await pool.query(
+    `SELECT
+      limits.limitAmount AS \`limit\`,
+      limits.usedToday,
+      GREATEST(limits.limitAmount - limits.usedToday, 0) AS available
+    FROM (
+      SELECT
+        e.limite_diario_sinpe AS limitAmount,
+        (SELECT COALESCE(SUM(t.monto), 0)
+         FROM transferencia t
+         WHERE t.id_cuenta_origen = c.id_cuenta
+           AND t.tipo = 'SINPE_MOVIL'
+           AND t.fecha >= CURDATE()
+           AND t.fecha < CURDATE() + INTERVAL 1 DAY) AS usedToday
+      FROM cuenta_iban c
+      JOIN entidad_financiera e ON e.id_entidad = c.id_entidad
+      WHERE c.iban = ? AND c.id_cliente = ? AND c.id_entidad = ?
+    ) limits`,
+    [iban, clientId, entityId],
+  );
+  return rows[0] ?? null;
 }

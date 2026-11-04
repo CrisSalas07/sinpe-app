@@ -375,11 +375,12 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 
 **Transfer flow:**
 - **Origin select:** "Cuenta de origen" uses `/api/me/accounts` in both tabs (only CRC accounts in "Por teléfono"), format "CR12 …001 · Ahorros colones · ₡ 123 991". Below it: "Teléfono de destino", "Monto", "Detalle (opcional)".
-- **Recipient:** after 8 digits of phone (or 22 characters of IBAN) show "Destinatario: <nombre compacto> · <entidad>". A number without SINPE Móvil shows the error on the field.
+- **Recipient:** after 8 digits of phone (or 22 characters of IBAN) show "Destinatario: <nombre compacto> · <entidad>" (entity code). A number without SINPE Móvil shows the error on the field, with no name: the old "Sin afiliar" card of the Figma is gone, since `recipient` must not reveal more than a valid destination.
 - **Monto help:** "Disponible hoy: ₡ X de su límite diario."
 - **Step 1 → 2 (Revisión)** is frontend-only: it checks **formats only** (destination 8 digits / IBAN pattern, amount `^\d{1,13}(\.\d{1,2})?$` and > 0 with the Figma text "El monto debe ser mayor que cero.") and shows "Cuenta de origen", "Destino: 8000-0002 · Iván Altamirano (BN)", "Monto", "Saldo del origen después" (integer cents), "Tipo" and "Comisión: ₡ 0" (always 0 in the simulation).
 - **"Confirmar"** calls the backend, with both buttons disabled while the request is pending. **Business rules are checked only by the database** (Cristopher's decision): if the procedure rejects the transfer, the app goes back to step 1 · Datos and shows the SP message in the red alert, with the field marked when it is unambiguous.
-- **"Desde" card:** the client's own account. **"Hacia" card:** the recipient from `/recipient`.
+- **"Desde" card:** the client's own account. **"Hacia" card:** the recipient from `/recipient`: name, phone or IBAN, entity tag; no balance or status.
+- **Account labels:** the schema has no account type, so "Ahorros colones" / "Ahorros dólares" follow the currency.
 - **Comprobante:** shows before → after for both accounts and the conserved total, as in the Figma, because the exercise requires proving conservation (Cristopher's decision; mention it in the README). The "Hacia" card in step 1 never shows that balance.
 - **Test-case chips** are buttons that **prefill the form**. They are hidden unless the session user is `leonardo.aguilar` (BCR):
   - misma cuenta: 001 → 7000-0001
