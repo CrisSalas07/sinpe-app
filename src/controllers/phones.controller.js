@@ -5,6 +5,10 @@ export async function list(req, res) {
   res.json(await phonesService.list(req.session.user.entityId));
 }
 
+export async function options(req, res) {
+  res.json(await phonesService.options(req.session.user.entityId));
+}
+
 export async function stats(req, res) {
   res.json(await phonesService.stats(req.session.user.entityId));
 }

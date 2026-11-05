@@ -16,7 +16,10 @@ if (await loadOptions()) await Promise.all([loadHistory(), loadPhones()]);
 
 async function loadOptions() {
   try {
-    const [accountList, phoneList] = await Promise.all([api('/api/accounts'), api('/api/phones')]);
+    const [accountList, phoneList] = await Promise.all([
+      api('/api/accounts'),
+      api('/api/phones/options'),
+    ]);
     phones.iban.replaceChildren(
       ...accountList.map((account) =>
         el(

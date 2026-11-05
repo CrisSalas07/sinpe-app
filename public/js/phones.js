@@ -103,10 +103,8 @@ async function loadOwners() {
   }
 }
 
-// The IBAN of an enrollment in another entity is not data of this one.
 function enrolledAccount(phone) {
-  if (phone.enrolledIban) return ibanTail(phone.enrolledIban);
-  return phone.enrolled ? `Otra entidad (${phone.enrolledBankCode})` : '—';
+  return phone.enrolledIban ? ibanTail(phone.enrolledIban) : '—';
 }
 
 function renderRows() {

@@ -76,7 +76,10 @@ async function loadEnrollments() {
 // triggers and procedures reject invalid combinations, as the Figma error screens show.
 async function loadOptions() {
   try {
-    const [phones, accounts] = await Promise.all([api('/api/phones'), api('/api/accounts')]);
+    const [phones, accounts] = await Promise.all([
+      api('/api/phones/options'),
+      api('/api/accounts'),
+    ]);
     for (const phone of phones) phonesById.set(phone.id, phone);
     for (const account of accounts) accountsById.set(account.id, account);
     enrollForm.elements.phoneId.replaceChildren(

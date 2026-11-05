@@ -110,8 +110,9 @@ HTTP request
   client **always come from the session**: `entityId`, `bankId` and `clientId` are rejected in
   request bodies, and the procedures check that the origin account belongs to that client and
   entity. The page-level role check is only a convenience; the server protects the data.
-- **Entity isolation:** an administrator only sees data of its entity. A phone enrolled in another
-  entity shows that entity's code, never the IBAN.
+- **Entity isolation:** an administrator only sees data of its entity. Teléfonos leaves out phones
+  enrolled in another entity. The Afiliar and Informes selects still list them, without saying
+  where, so the database is the one that rejects an invalid enrollment.
 - **Session:** `express-session`, cookie `httpOnly` + `sameSite=strict` (+ `secure` in
   production), new session id on login, destroyed on logout, 15-minute idle timeout.
 - **Every `/api/*` route except login and `GET /api/auth/entities` requires a session.**

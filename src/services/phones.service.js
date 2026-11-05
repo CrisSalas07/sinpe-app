@@ -25,6 +25,8 @@ async function withFieldErrors(call) {
 
 export const list = (entityId) => phonesRepository.findAll(entityId);
 
+export const options = (entityId) => phonesRepository.findOptions(entityId);
+
 export const stats = (entityId) => phonesRepository.getStats(entityId);
 
 export async function register(clientId, number) {
