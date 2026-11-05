@@ -131,30 +131,28 @@ HTTP request
 
 - Stored procedures own all writes, transactions and locking (`FOR UPDATE` in transfers).
   The backend never reimplements or bypasses them.
-- Money is never a JavaScript float: `DECIMAL` values travel as strings, the balance preview and
-  the conserved total use integer cents.
+- Money is never a JavaScript float: `DECIMAL` values travel as strings and the balance preview
+  uses integer cents.
 - `dateStrings: true` avoids time-zone shifts.
 - Submit / confirm buttons are disabled while a request is pending (no double transfers).
 - After every write the affected data is read again from the database.
-- Transfer receipt: the `CALL` and `SELECT LAST_INSERT_ID()` run on the same connection; the
-  "before" balances are computed in SQL from the stored "after" balances.
+- Transfer receipt: the `CALL` and `SELECT LAST_INSERT_ID()` run on the same connection. Like a
+  real SINPE Móvil receipt it shows no balances, and a phone transfer never returns the IBAN
+  behind the recipient's phone.
 
 ## Known limitations
 
 - **In-memory session store:** sessions are lost when the server restarts and it only works with
   a single instance. Fine for this local demo; a shared store would be needed to deploy it.
-- **Receipt with simultaneous transfers:** if two transfers on the same accounts are confirmed at
-  the same time, the money is always correct (both accounts are locked with `FOR UPDATE` inside a
-  transaction), but a receipt's "after" balances are read right after its `CALL` without a lock,
-  so they may already include the other transfer.
 - **Simultaneous opposite transfers:** each transfer locks its origin account first, so A → B and
   B → A at the same moment can deadlock. MySQL rolls one back: no money moves and that client sees
   "Error interno". Trying again works.
 - **Password hint on the login screen:** the prototype shows the test credentials, and the app
   keeps them to match the prototype. This is an accepted risk for a local demo; remove that line
   before using the app anywhere else. The seed data also has one shared test password.
-- **Destination balances in the receipt:** a real app would not show them, but the exercise
-  requires proving that the total is conserved. The "Hacia" card never shows them.
+- **Conservation of the total:** the exercise asked to show it, but the receipt follows the real
+  service and shows no balances. The procedures still guarantee it (both accounts change in one
+  transaction); it can be checked by comparing the balances in Cuentas IBAN.
 - **Recipient lookup:** a logged-in client can look up the name of a phone or IBAN, as in the real
   service, and that endpoint has no rate limit. It only returns the compact name and the entity.
 - **No forced password change:** clients keep the temporary password, because the prototype has no
@@ -233,4 +231,4 @@ Queries and reports from the assignment:
 | 3. Enrollment history of a phone            | Informes → "Afiliaciones de un teléfono"          |
 | 4. Sent and received transfers              | Mis movimientos                                   |
 | 5. Totals in a date range                   | Mis movimientos → period totals                   |
-| 6. Balances and conservation of the total   | Comprobante ("Total entre ambas cuentas")         |
+| 6. Balances and conservation of the total   | Cuentas IBAN (administrator), Inicio (client)     |

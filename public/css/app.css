@@ -565,12 +565,6 @@ select {
   color: var(--ok);
 }
 
-.note-ok {
-  margin-top: 18px;
-  color: var(--ok);
-  font-weight: 600;
-}
-
 /* ---------- Segmented tabs ---------- */
 .tabs {
   display: inline-flex;

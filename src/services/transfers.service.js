@@ -40,7 +40,18 @@ async function withFieldErrors(fields, call) {
   }
 }
 
-const toReceipt = (row) => ({ ...row, receipt: `TR-${row.id}` });
+const toReceipt = ({
+  originNames,
+  originSurname,
+  destinationNames,
+  destinationSurname,
+  ...row
+}) => ({
+  ...row,
+  receipt: `TR-${row.id}`,
+  originName: compactName(originNames, originSurname),
+  destinationName: compactName(destinationNames, destinationSurname),
+});
 
 export async function bySinpe(user, transfer) {
   return toReceipt(

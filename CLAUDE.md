@@ -264,8 +264,8 @@ Read `db/01_esquema_y_datos.sql` before writing any query.
 ### Receipt number
 `sp_transferir_*` does not return the id. Run the `CALL` and then `SELECT LAST_INSERT_ID()` on the **same connection** (`pool.getConnection()`, release it in `finally`). The receipt is shown as `TR-<id>`.
 
-### Receipt balances
-The procedures do not return balances. On the **same connection**, after the `CALL`, read the balances of both accounts and compute the "before" values **in SQL** (origin: `saldo + monto`, destination: `saldo - monto`) so DECIMAL stays exact. Reading the balances before the `CALL` was rejected because it is not locked and could be stale under concurrency.
+### Receipt data
+After the `CALL`, on the **same connection**, read the receipt: number, date, amount, type, detail, origin (compact name, IBAN, entity code) and destination (compact name, entity code, and the phone or the IBAN). **No balances.** In a SINPE Móvil transfer the destination IBAN is not returned, only the phone.
 
 ### Stored procedure messages
 Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Leave them as they are and show them as is.
@@ -371,8 +371,6 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 - `transferencia.detalle VARCHAR(100) NULL` is in `01`. Pass NULL when empty.
 - Revisión and Comprobante show a "Detalle" row **only when the user wrote a detail** (Cristopher's decision); with an empty detail they look exactly like the Figma. **Mis movimientos does not show it** (Cristopher's decision: the Figma table has no natural place, and `sp_consultar_movimientos` does not return it).
 
-**Known limitation (for the README):** with two transfers confirmed at the same time on the same accounts, the money is always correct (the procedures lock both accounts with `FOR UPDATE` and run in a transaction). Only the receipt can be affected: its "after" balances are read right after the `CALL` without a lock, so they may already include the other transfer, and the "before" values (after ∓ amount) would be off by that amount.
-
 **Transfer flow:**
 - **Origin select:** "Cuenta de origen" uses `/api/me/accounts` in both tabs (only CRC accounts in "Por teléfono"), format "CR12 …001 · Ahorros colones · ₡ 123 991". Below it: "Teléfono de destino", "Monto", "Detalle (opcional)".
 - **Recipient:** after 8 digits of phone (or 22 characters of IBAN) show "Destinatario: <nombre compacto> · <entidad>" (entity code). A number without SINPE Móvil shows the error on the field, with no name: the old "Sin afiliar" card of the Figma is gone, since `recipient` must not reveal more than a valid destination.
@@ -381,7 +379,7 @@ Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Lea
 - **"Confirmar"** calls the backend, with both buttons disabled while the request is pending. **Business rules are checked only by the database** (Cristopher's decision): if the procedure rejects the transfer, the app goes back to step 1 · Datos and shows the SP message in the red alert, with the field marked when it is unambiguous.
 - **"Desde" card:** the client's own account. **"Hacia" card:** the recipient from `/recipient`: name, phone or IBAN, entity tag; no balance or status.
 - **Account labels:** the schema has no account type, so "Ahorros colones" / "Ahorros dólares" follow the currency.
-- **Comprobante:** shows before → after for both accounts and the conserved total, as in the Figma, because the exercise requires proving conservation (Cristopher's decision; mention it in the README). The "Hacia" card in step 1 never shows that balance.
+- **Comprobante:** like a real transfer or SINPE Móvil receipt, not like the Figma or the exercise statement (decision of Nov 4, 2026; it replaces the earlier decision to show before → after balances and the conserved total). Rows: Monto, Tipo, Origen ("Leonardo Aguilar · CR12 …001 (BCR)"), Destino ("Iván Altamirano · 8000-0002 (BN)"), Detalle (only if written), Comisión. It shows no balance of any account.
 - **Test-case chips** are buttons that **prefill the form**. They are hidden unless the session user is `leonardo.aguilar` (BCR):
   - misma cuenta: 001 → 7000-0001
   - permitida: 001 → 8000-0002 (BN)
@@ -458,7 +456,7 @@ After the report, **wait** for Cristopher to say "continúa".
 ## 13. Decisions from the change spec
 
 **Closed (Cristopher, Nov 3, 2026):**
-1. **Destination balances in the receipt:** kept as in the Figma; see "Comprobante" in section 9.
+1. **Balances in the receipt:** removed, see "Comprobante" in section 9.
 2. **Daily limit:** ₡200 000 for every entity. Account 001 (₡123 991) cannot reach it, and the BCR limit cannot go below ₡150 000 without breaking the "saldo insuficiente" chip, because the limit is checked first. So it is tested without a chip: log in as `jandany.moya` (BCR) and send ₡250 000 from account 017 (₡507 847).
 
 3. **Simultaneous opposite transfers:** the possible deadlock stays documented in the README; lock order is not changed.
@@ -467,4 +465,4 @@ After the report, **wait** for Cristopher to say "continúa".
 **Open:**
 5. **`disenio/` images.** Replace with exports of the new Figma when they are ready.
 
-**To fix in the Figma, not in the code:** the "usuario de otra entidad" login error (must be generic); the help "Se cambia en el primer ingreso" (must be "El cliente la usará para iniciar sesión."); and what the Figma lacks, defined here instead: entity selector, status notes, "Cuenta de origen", daily limit error, "ya afiliado en otra entidad" text.
+**To fix in the Figma, not in the code:** the Comprobante screen (section 9); the "usuario de otra entidad" login error (must be generic); the help "Se cambia en el primer ingreso" (must be "El cliente la usará para iniciar sesión."); and what the Figma lacks, defined here instead: entity selector, status notes, "Cuenta de origen", daily limit error, "ya afiliado en otra entidad" text.

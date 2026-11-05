@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 
-// Balances are read after the CALL; "before" is computed in SQL so DECIMAL stays exact.
+// Like a real receipt: no balances, and a SINPE Móvil sender only gets the recipient's phone,
+// never the IBAN of the account behind it.
 const RECEIPT_SQL = `
   SELECT
     t.id_transferencia AS id,
@@ -10,14 +11,23 @@ const RECEIPT_SQL = `
     t.detalle AS detail,
     o.moneda AS currency,
     o.iban AS originIban,
-    o.saldo + t.monto AS originBefore,
-    o.saldo AS originAfter,
-    d.iban AS destinationIban,
-    d.saldo - t.monto AS destinationBefore,
-    d.saldo AS destinationAfter
+    co.nombres AS originNames,
+    co.primer_apellido AS originSurname,
+    eo.codigo AS originEntity,
+    IF(t.tipo = 'IBAN', d.iban, NULL) AS destinationIban,
+    tel.numero AS destinationNumber,
+    cd.nombres AS destinationNames,
+    cd.primer_apellido AS destinationSurname,
+    ed.codigo AS destinationEntity
   FROM transferencia t
   JOIN cuenta_iban o ON o.id_cuenta = t.id_cuenta_origen
+  JOIN cliente co ON co.id_cliente = o.id_cliente
+  JOIN entidad_financiera eo ON eo.id_entidad = o.id_entidad
   JOIN cuenta_iban d ON d.id_cuenta = t.id_cuenta_destino
+  JOIN cliente cd ON cd.id_cliente = d.id_cliente
+  JOIN entidad_financiera ed ON ed.id_entidad = d.id_entidad
+  LEFT JOIN transferencia_sinpe ts ON ts.id_transferencia = t.id_transferencia
+  LEFT JOIN telefono_cliente tel ON tel.id_telefono = ts.id_telefono_destino
   WHERE t.id_transferencia = ?`;
 
 /**

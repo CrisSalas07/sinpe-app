@@ -380,23 +380,23 @@ async function onConfirm() {
 
 function showReceipt(result) {
   const money = (value) => formatMoney(value, result.currency);
-  const totalBefore = fromCents(toCents(result.originBefore) + toCents(result.destinationBefore));
-  const totalAfter = fromCents(toCents(result.originAfter) + toCents(result.destinationAfter));
+  const isSinpe = result.destinationNumber !== null;
+  const destination = isSinpe
+    ? formatPhone(result.destinationNumber)
+    : shortIban(result.destinationIban);
   document.getElementById('receipt-sub').textContent =
     `Comprobante ${result.receipt} · ${result.date.slice(0, 16)}`;
   document
     .getElementById('receipt-rows')
     .replaceChildren(
       kvRow('Monto', money(result.amount)),
+      kvRow('Tipo', isSinpe ? 'SINPE Móvil' : 'IBAN'),
+      kvRow(
+        'Origen',
+        `${result.originName} · ${shortIban(result.originIban)} (${result.originEntity})`,
+      ),
+      kvRow('Destino', `${result.destinationName} · ${destination} (${result.destinationEntity})`),
       ...detailRow(result.detail),
-      kvRow(
-        'Origen, antes → después',
-        `${money(result.originBefore)} → ${money(result.originAfter)}`,
-      ),
-      kvRow(
-        'Destino, antes → después',
-        `${money(result.destinationBefore)} → ${money(result.destinationAfter)}`,
-      ),
-      kvRow('Total entre ambas cuentas', `${money(totalBefore)} → ${money(totalAfter)}`),
+      kvRow('Comisión', money('0')),
     );
 }
