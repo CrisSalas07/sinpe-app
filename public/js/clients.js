@@ -8,6 +8,7 @@ const formView = document.getElementById('form-view');
 const rows = document.getElementById('rows');
 const search = document.getElementById('search');
 const listAlert = document.getElementById('list-alert');
+const listOk = document.getElementById('list-ok');
 const form = document.getElementById('client-form');
 const formAlert = document.getElementById('form-alert');
 const submit = form.querySelector('button[type="submit"]');
@@ -18,7 +19,10 @@ const user = await initLayout('clients', 'ADMIN');
 document.getElementById('status-note').textContent =
   `El cliente se crea con estado ACTIVO en ${user.entityName}.`;
 window.addEventListener('hashchange', showView);
-search.addEventListener('input', renderRows);
+search.addEventListener('input', () => {
+  listOk.hidden = true; // it is about the last save, not about what is now listed
+  renderRows();
+});
 form.addEventListener('submit', onSubmit);
 showView();
 await loadClients();
@@ -29,6 +33,7 @@ function showView() {
   listView.hidden = showForm;
   formView.hidden = !showForm;
   if (showForm) {
+    listOk.hidden = true;
     form.reset();
     clearFormErrors(form, formAlert);
     form.elements.identification.focus();
@@ -88,7 +93,7 @@ async function onSubmit(event) {
 
   const fields = form.elements;
   try {
-    await api('/api/clients', {
+    const client = await api('/api/clients', {
       method: 'POST',
       body: {
         identification: fields.identification.value.trim(),
@@ -103,6 +108,8 @@ async function onSubmit(event) {
     // Back to the list, re-read from the database.
     location.hash = '';
     await loadClients();
+    listOk.textContent = `Se registró a ${compactName(client.names, client.firstSurname)} con el usuario ${client.username}.`;
+    listOk.hidden = false;
   } catch (err) {
     showFormError(form, formAlert, err);
   } finally {

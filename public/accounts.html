@@ -51,15 +51,17 @@
           />
         </div>
         <div id="list-alert" class="alert alert-bad" role="alert" hidden></div>
+        <div id="list-ok" class="alert alert-ok" role="status" hidden></div>
         <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
                 <th>Titular</th>
-                <th>IBAN</th>
-                <th>Moneda</th>
+                <th class="col-iban">IBAN</th>
+                <th class="col-narrow">Moneda</th>
                 <th>Saldo</th>
                 <th>Estado</th>
+                <th class="col-actions"><span class="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody id="rows"></tbody>
@@ -111,18 +113,22 @@
 
           <div class="field">
             <label class="label" for="iban">IBAN</label>
-            <input
-              class="input"
-              id="iban"
-              name="iban"
-              minlength="22"
-              maxlength="22"
-              pattern="CR[0-9]{20}"
-              autocomplete="off"
-              spellcheck="false"
-              required
-              aria-describedby="iban-help iban-error"
-            />
+            <!-- Write it by hand or generate the next one of this entity (Cristopher's decision, Nov 7, 2026). -->
+            <div class="input-action">
+              <input
+                class="input"
+                id="iban"
+                name="iban"
+                minlength="22"
+                maxlength="22"
+                pattern="CR[0-9]{20}"
+                autocomplete="off"
+                spellcheck="false"
+                required
+                aria-describedby="iban-help iban-error"
+              />
+              <button class="btn btn-secondary" type="button" id="generate-iban">Generar</button>
+            </div>
             <p class="help" id="iban-help"></p>
             <p class="field-error" id="iban-error" hidden></p>
           </div>
@@ -165,6 +171,46 @@
           </div>
         </form>
       </div>
+
+      <!-- Cambiar estado (Cristopher's decision, Nov 7, 2026): only the account is restricted. -->
+      <dialog id="status-dialog" class="modal" aria-labelledby="status-title">
+        <form id="status-form">
+          <h2 class="modal-title" id="status-title"></h2>
+          <p class="page-sub">
+            Una cuenta que no está ACTIVA no envía ni recibe transferencias. Sus afiliaciones a
+            SINPE Móvil se conservan.
+          </p>
+          <div class="alert alert-bad modal-alert" role="alert" hidden></div>
+          <dl class="kv">
+            <div class="kv-row">
+              <dt>Titular</dt>
+              <dd data-value="holder"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Saldo</dt>
+              <dd data-value="balance"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Estado actual</dt>
+              <dd data-value="status"></dd>
+            </div>
+          </dl>
+          <div class="field modal-field">
+            <label class="label" for="status-select">Nuevo estado</label>
+            <select class="select" id="status-select" name="status" required>
+              <option value="ACTIVA">ACTIVA</option>
+              <option value="INACTIVA">INACTIVA</option>
+              <option value="BLOQUEADA">BLOQUEADA</option>
+            </select>
+            <p class="help">Para pasar a INACTIVA el saldo debe ser cero.</p>
+            <p class="field-error" hidden></p>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" data-close>Cancelar</button>
+            <button class="btn btn-primary" type="submit">Cambiar estado</button>
+          </div>
+        </form>
+      </dialog>
     </main>
   </body>
 </html>

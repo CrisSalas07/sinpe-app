@@ -1,4 +1,5 @@
 import * as meRepository from '../repositories/me.repository.js';
+import { ValidationError } from '../utils/errors.js';
 import { compactName } from '../utils/names.js';
 import * as phonesService from './phones.service.js';
 
@@ -26,4 +27,16 @@ export async function movements({ entityId, clientId }, query) {
 
 export const phones = ({ entityId, clientId }) => meRepository.findPhones(entityId, clientId);
 
-export const registerPhone = ({ clientId }, number) => phonesService.register(clientId, number);
+// The procedure's message speaks about "this client"; the client reads it about themselves.
+const OWN_PHONE = 'El teléfono ya está registrado a este cliente';
+
+export async function registerPhone({ entityId, clientId }, number) {
+  try {
+    await phonesService.register(entityId, clientId, number);
+  } catch (err) {
+    if (err instanceof ValidationError && err.message === OWN_PHONE) {
+      throw new ValidationError('Ese número ya está registrado a su nombre.', err.field);
+    }
+    throw err;
+  }
+}

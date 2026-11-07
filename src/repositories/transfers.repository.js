@@ -1,10 +1,12 @@
 import { pool } from '../config/db.js';
 
-// Like a real receipt: no balances, and a SINPE Móvil sender only gets the recipient's phone,
-// never the IBAN of the account behind it.
+// Like a real receipt: a reference number (date + origin entity code + consecutive), no balances,
+// and a SINPE Móvil sender only gets the recipient's phone, never the IBAN of the account behind it.
 const RECEIPT_SQL = `
   SELECT
     t.id_transferencia AS id,
+    CONCAT(DATE_FORMAT(t.fecha, '%Y%m%d'), '0', eo.codigo_iban, LPAD(t.id_transferencia, 10, '0'))
+      AS receipt,
     t.fecha AS date,
     t.tipo AS type,
     t.monto AS amount,
@@ -62,15 +64,16 @@ export function transferBySinpe(
 
 export function transferByIban(
   { entityId, clientId },
-  { originIban, destinationIban, amount, detail },
+  { originIban, destinationIban, amount, detail, destinationIdentification },
 ) {
-  return callAndReadReceipt('CALL sp_transferir_iban(?, ?, ?, ?, ?, ?)', [
+  return callAndReadReceipt('CALL sp_transferir_iban(?, ?, ?, ?, ?, ?, ?)', [
     entityId,
     clientId,
     originIban,
     destinationIban,
     amount,
     detail,
+    destinationIdentification,
   ]);
 }
 

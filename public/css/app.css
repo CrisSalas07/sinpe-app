@@ -1112,3 +1112,23 @@ fieldset.plain .field:first-child {
 .table th.col-iban {
   width: 220px;
 }
+
+/* An input with a button beside it ("IBAN" + "Generar"). */
+.input-action {
+  display: flex;
+  gap: 8px;
+}
+
+.input-action .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Short values (currency) and the action chip column of grouped tables. */
+.table th.col-narrow {
+  width: 90px;
+}
+
+.table th.col-actions {
+  width: 150px;
+}

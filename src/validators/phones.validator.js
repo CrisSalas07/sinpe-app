@@ -1,5 +1,5 @@
 import { ValidationError } from '../utils/errors.js';
-import { assertOnlyFields, requireString } from './common.js';
+import { assertOnlyFields, requireId, requireString } from './common.js';
 
 const PHONE_PATTERN = /^[0-9]{8}$/;
 
@@ -15,6 +15,15 @@ export function validatePhoneNumber(value, field = 'number') {
 export function validateNewPhone(body) {
   assertOnlyFields(body, ['number']);
   return { number: validatePhoneNumber(body.number) };
+}
+
+/** Admin "Registrar teléfono": owner chosen in a select (the procedure checks it is a client of the entity). */
+export function validateAdminPhone(body) {
+  assertOnlyFields(body, ['clientId', 'number']);
+  return {
+    clientId: requireId(body, 'clientId', 'El titular'),
+    number: validatePhoneNumber(body.number),
+  };
 }
 
 /** "Editar teléfono": the new owner's identification. */

@@ -53,3 +53,26 @@ export async function create(entityId, { clientId, currency, iban, balance, open
     openedAt,
   ]);
 }
+
+/**
+ * Suggested IBAN for a new account of the entity: "CR12" (the fixed check digits of the seed data),
+ * "0" + the entity's IBAN code, and the next account number of that entity in 14 digits.
+ * shortcut: two admins generating at the same moment get the same IBAN; sp_registrar_cuenta rejects
+ * the second one ("El IBAN ya está registrado") and generating again fixes it. Fine for this demo.
+ */
+export async function findNextIban(entityId) {
+  const [rows] = await pool.query(
+    `SELECT CONCAT('CR12', '0', e.codigo_iban,
+                   LPAD(COALESCE(MAX(CAST(SUBSTRING(c.iban, 9) AS UNSIGNED)), 0) + 1, 14, '0')) AS iban
+     FROM entidad_financiera e
+     LEFT JOIN cuenta_iban c ON c.id_entidad = e.id_entidad
+     WHERE e.id_entidad = ?
+     GROUP BY e.id_entidad, e.codigo_iban`,
+    [entityId],
+  );
+  return rows[0]?.iban ?? null;
+}
+
+export async function changeStatus(entityId, iban, status) {
+  await pool.query('CALL sp_cambiar_estado_cuenta(?, ?, ?)', [entityId, iban, status]);
+}

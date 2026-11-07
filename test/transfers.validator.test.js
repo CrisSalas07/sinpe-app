@@ -104,3 +104,16 @@ test('the limit query needs the origin IBAN', () => {
     'originIban',
   );
 });
+
+test('IBAN transfer: the beneficiary id is optional (the procedure requires it between entities)', () => {
+  assert.equal(validateIbanTransfer(iban).destinationIdentification, null);
+  assert.equal(
+    validateIbanTransfer({ ...iban, destinationIdentification: ' UCR000002 ' })
+      .destinationIdentification,
+    'UCR000002',
+  );
+  assert.equal(
+    fieldOf(() => validateIbanTransfer({ ...iban, destinationIdentification: 'x'.repeat(21) })),
+    'destinationIdentification',
+  );
+});

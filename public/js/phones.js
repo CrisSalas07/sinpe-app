@@ -14,8 +14,10 @@ import { initLayout } from './layout.js';
 
 const views = {
   list: document.getElementById('list-view'),
+  register: document.getElementById('register-view'),
   edit: document.getElementById('edit-view'),
 };
+const registerForm = document.getElementById('register-form');
 const rows = document.getElementById('rows');
 const search = document.getElementById('search');
 const listAlert = document.getElementById('list-alert');
@@ -24,6 +26,7 @@ const editForm = document.getElementById('edit-form');
 
 let phones = [];
 let editingNumber = null;
+const identificationById = new Map(); // client id → identification, the group key of the list
 const openGroups = new Set(); // owners unfolded in the list, kept across reloads
 
 await initLayout('phones', 'ADMIN');
@@ -33,6 +36,11 @@ search.addEventListener('input', () => {
   renderRows();
 });
 editForm.addEventListener('submit', onEdit);
+registerForm.addEventListener('submit', onRegister);
+// "Input fields take digits only."
+registerForm.elements.number.addEventListener('input', (event) => {
+  event.target.value = event.target.value.replace(/\D/g, '');
+});
 await Promise.all([loadPhones(), loadOwners()]);
 showView();
 
@@ -44,12 +52,19 @@ function alertOf(form) {
   return form.querySelector('.alert');
 }
 
-// Views of this page: list and "#editar/<number>".
+// Views of this page: list, "#registrar" and "#editar/<number>".
 function showView() {
   const editMatch = location.hash.match(/^#editar\/(\d{8})$/);
   const phone = editMatch && phones.find((p) => p.number === editMatch[1]);
-  const view = phone ? 'edit' : 'list';
+  const view = phone ? 'edit' : location.hash === '#registrar' ? 'register' : 'list';
   for (const [name, node] of Object.entries(views)) node.hidden = name !== view;
+
+  if (view === 'register') {
+    listOk.hidden = true;
+    registerForm.reset();
+    clearFormErrors(registerForm, alertOf(registerForm));
+    registerForm.elements.clientId.focus();
+  }
 
   if (view === 'edit') {
     listOk.hidden = true;
@@ -96,22 +111,16 @@ async function loadPhones() {
 // Lists only active clients of the entity; the database still validates the owner.
 async function loadOwners() {
   try {
-    const clients = await api('/api/clients');
+    const active = (await api('/api/clients')).filter((client) => client.status === 'ACTIVO');
+    const label = (client) =>
+      ownerLabel(client.identification, client.names, client.firstSurname, client.secondSurname);
+    for (const client of active) identificationById.set(client.id, client.identification);
+    // Editar sends the identification (sp_cambiar_titular_telefono); Registrar sends the client id.
     editForm.elements.identification.replaceChildren(
-      ...clients
-        .filter((client) => client.status === 'ACTIVO')
-        .map((client) =>
-          el(
-            'option',
-            { value: client.identification },
-            ownerLabel(
-              client.identification,
-              client.names,
-              client.firstSurname,
-              client.secondSurname,
-            ),
-          ),
-        ),
+      ...active.map((client) => el('option', { value: client.identification }, label(client))),
+    );
+    registerForm.elements.clientId.replaceChildren(
+      ...active.map((client) => el('option', { value: client.id }, label(client))),
     );
   } catch (err) {
     listAlert.textContent = err.message;
@@ -180,13 +189,41 @@ async function onEdit(event) {
     openGroups.add(identification);
     location.hash = '';
     await loadPhones();
-    const moved = phones.find((phone) => phone.number === number);
-    if (moved) {
-      listOk.textContent = `${formatPhone(number)} ahora pertenece a ${compactName(moved.ownerNames, moved.ownerFirstSurname)}.`;
-      listOk.hidden = false;
-    }
+    confirmInList(number, 'ahora pertenece a');
   } catch (err) {
     showFormError(editForm, alertOf(editForm), err);
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+/** Shows the green confirmation above the list, with the owner's group open. */
+function confirmInList(number, verb) {
+  const phone = phones.find((p) => p.number === number);
+  if (!phone) return;
+  listOk.textContent = `${formatPhone(number)} ${verb} ${compactName(phone.ownerNames, phone.ownerFirstSurname)}.`;
+  listOk.hidden = false;
+}
+
+/**
+ * Admin "Registrar teléfono". sp_registrar_telefono checks that the owner is a client of this
+ * entity and that the number is not registered (to this client or to anyone else).
+ */
+async function onRegister(event) {
+  event.preventDefault();
+  const submit = registerForm.querySelector('button[type="submit"]');
+  const clientId = Number(registerForm.elements.clientId.value);
+  const number = registerForm.elements.number.value;
+  clearFormErrors(registerForm, alertOf(registerForm));
+  submit.disabled = true;
+  try {
+    await api('/api/phones', { method: 'POST', body: { clientId, number } });
+    openGroups.add(identificationById.get(clientId));
+    location.hash = '';
+    await loadPhones();
+    confirmInList(number, 'quedó registrado a');
+  } catch (err) {
+    showFormError(registerForm, alertOf(registerForm), err);
   } finally {
     submit.disabled = false;
   }

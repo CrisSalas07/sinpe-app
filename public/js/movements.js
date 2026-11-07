@@ -79,7 +79,8 @@ async function loadMovements() {
     $('total-received').textContent = formatMoney(result.totals.received, currency);
   } catch (err) {
     if (lookup !== lookups) return;
-    fillRows(rows, [], 'No se pudo cargar.');
+    // 400: the dates or account were rejected (the alert says why); otherwise the request failed.
+    fillRows(rows, [], err.status === 400 ? 'Sin movimientos.' : 'No se pudo cargar.');
     $('total-sent').textContent = '';
     $('total-received').textContent = '';
     showError(err);

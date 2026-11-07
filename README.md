@@ -1,235 +1,386 @@
 # SINPE JUNTAUCR
 
-A web app for the _Prueba corta – SINPE JUNTAUCR_ exercise (Databases course, UCR Sede del Sur).
-It simulates clients, IBAN accounts, phone numbers, SINPE Móvil enrollments and money transfers on
-top of a MySQL database where **all business rules live in stored procedures and triggers**.
+Aplicación web para el ejercicio _Prueba corta – SINPE JUNTAUCR_ del curso de Bases de Datos (UCR,
+Sede del Sur). Simula clientes, cuentas IBAN, teléfonos, afiliaciones a SINPE Móvil y
+transferencias sobre una base de datos MySQL donde **todas las reglas de negocio viven en
+procedimientos almacenados y triggers**. La aplicación solo muestra datos y llama a esos
+procedimientos.
 
-In real life each bank has its own app. This simulation has one app with an **entity selector** at
-login: the session is tied to that entity and every query and write is filtered by it. There are
-two roles, **Administrador** and **Cliente**.
+## Contenido
 
-The UI follows the Figma prototype, in Spanish, with a single light theme.
+1. [Funcionamiento general](#1-funcionamiento-general)
+2. [Estructura del proyecto](#2-estructura-del-proyecto)
+3. [Base de datos](#3-base-de-datos)
+4. [Manual de instalación](#4-manual-de-instalación)
+5. [Credenciales de prueba](#5-credenciales-de-prueba)
+6. [Manual de usuario](#6-manual-de-usuario)
+7. [Reglas de negocio](#7-reglas-de-negocio)
+8. [Seguridad e integridad de datos](#8-seguridad-e-integridad-de-datos)
+9. [Scripts y pruebas](#9-scripts-y-pruebas)
+10. [Limitaciones conocidas](#10-limitaciones-conocidas)
 
-## Requirements
+---
 
-- Node.js 24 (uses `--env-file` and `--watch`, no dotenv)
-- npm 11
-- MySQL 8
+## 1. Funcionamiento general
 
-## Setup from scratch
+- **Una app, varios bancos.** En la vida real cada banco tiene su propia app. Aquí hay una sola,
+  con un selector de **entidad financiera** en el inicio de sesión: BCR, BN, BP o BAC. Todo lo que
+  se ve y se hace queda limitado a la entidad elegida.
+- **Dos roles:**
+  - **Administrador** (personal del banco): registra clientes, cuentas y teléfonos, afilia
+    teléfonos a SINPE Móvil y consulta informes. No transfiere dinero.
+  - **Cliente**: ve sus cuentas, registra sus teléfonos, transfiere dinero (por SINPE Móvil o por
+    IBAN) y consulta sus movimientos. No afilia teléfonos.
+- **Una persona, varios bancos.** Una persona es única en el sistema (por su identificación), pero
+  puede ser cliente de varias entidades, con un usuario distinto en cada una.
+- **La base de datos manda.** Cada escritura pasa por un procedimiento almacenado que valida las
+  reglas y usa transacciones. Si algo no se cumple, el procedimiento rechaza la operación con un
+  mensaje (`SIGNAL`) y la app lo muestra tal cual en la alerta roja.
 
-1. **Create the database** as MySQL `root`, running the scripts in order:
+## 2. Estructura del proyecto
+
+```
+sinpe-app/
+├── db/                         Scripts de MySQL (se cargan en orden)
+│   ├── 01_esquema_y_datos.sql  Tablas y datos de prueba (borra y recrea la base)
+│   ├── 02_triggers.sql         Triggers de validación y de auditoría
+│   └── 03_procedimientos.sql   Procedimientos almacenados y el usuario sinpe_app
+├── src/                        Servidor (Node.js + Express)
+│   ├── server.js               Arranca el servidor HTTP
+│   ├── app.js                  Middlewares, rutas y archivos estáticos
+│   ├── config/                 Variables de entorno (env.js) y pool de MySQL (db.js)
+│   ├── routes/                 Rutas por recurso (solo conectan ruta → controlador)
+│   ├── controllers/            Leen la petición, validan y responden
+│   ├── services/               Casos de uso (por ejemplo: transferir = CALL + leer comprobante)
+│   ├── repositories/           Único lugar con SQL (SELECT y CALL sp_*)
+│   ├── validators/             Validación de entradas (formatos, largos, campos permitidos)
+│   ├── middlewares/            Sesión, roles, límite de intentos de login, manejo de errores
+│   └── utils/                  Errores, hash de contraseñas, formato de nombres
+├── public/                     Frontend (HTML + CSS + JavaScript, sin framework)
+│   ├── index.html              Inicio de sesión
+│   ├── clients.html, accounts.html, phones.html, sinpe.html, reports.html   Administrador
+│   ├── home.html, my-phones.html, transfers.html, movements.html            Cliente
+│   ├── css/                    tokens.css (colores del diseño) y app.css
+│   └── js/                     Un archivo por página + api.js, dom.js, format.js, layout.js
+├── scripts/hash-password.js    Genera el hash de la contraseña del administrador
+├── test/                       Pruebas automáticas (node:test)
+├── disenio/                    Capturas del prototipo de Figma (referencia)
+└── .env.example                Plantilla de configuración
+```
+
+**Capas del servidor:** cada capa solo llama a la de abajo.
+
+```
+Petición HTTP → routes → controllers → services → repositories → MySQL (procedimientos y triggers)
+```
+
+**Tecnologías:** MySQL 8, Node.js 24, Express 5, `mysql2`, `express-session`, `helmet`,
+`express-rate-limit`. El frontend es HTML, CSS y JavaScript sin frameworks.
+
+## 3. Base de datos
+
+Esquema `sinpe_movil`.
+
+| Tabla                  | Qué guarda                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `cliente`              | Personas (únicas por identificación y por correo), estado ACTIVO / INACTIVO        |
+| `entidad_financiera`   | Bancos: código (BCR…), código IBAN (152…), límite diario de SINPE Móvil            |
+| `cliente_entidad`      | Una persona como cliente de un banco, con su usuario y el hash de su contraseña    |
+| `moneda`               | Catálogo: CRC y USD                                                                |
+| `cuenta_iban`          | Cuentas: cliente, banco, moneda, IBAN, saldo, estado (ACTIVA, INACTIVA, BLOQUEADA) |
+| `telefono_cliente`     | Teléfonos: 8 dígitos, únicos en todo el sistema, un solo dueño                     |
+| `afiliacion_sinpe`     | Afiliación vigente de un teléfono a una cuenta (máximo una por teléfono)           |
+| `historial_afiliacion` | Eventos AFILIACION / DESAFILIACION (los escriben los triggers)                     |
+| `transferencia`        | Movimientos: origen, destino, monto, tipo (SINPE_MOVIL / IBAN), fecha, detalle     |
+| `transferencia_sinpe`  | Para SINPE Móvil: teléfono de origen (si tiene) y teléfono de destino              |
+
+**Triggers (`02`):** validan la afiliación (cuenta ACTIVA, en colones y del mismo dueño), validan
+las transferencias (monto positivo, cuentas distintas), impiden cambiar el dueño de un teléfono
+afiliado, impiden registrar teléfonos a clientes inactivos y escriben el historial de afiliaciones.
+
+**Procedimientos (`03`):**
+
+| Procedimiento                 | Uso                                                                   |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `sp_registrar_cliente`        | Registrar un cliente en una entidad, con usuario y contraseña         |
+| `sp_registrar_cuenta`         | Abrir una cuenta IBAN (el IBAN debe ser del banco de la sesión)       |
+| `sp_cambiar_estado_cuenta`    | Cambiar el estado de una cuenta (ACTIVA, INACTIVA, BLOQUEADA)         |
+| `sp_registrar_telefono`       | Registrar un teléfono a un cliente de la entidad                      |
+| `sp_cambiar_titular_telefono` | Cambiar el dueño de un teléfono (no si está afiliado)                 |
+| `sp_afiliar_sinpe`            | Afiliar un teléfono a una cuenta                                      |
+| `sp_desafiliar_sinpe`         | Quitar la afiliación (solo el banco que la tiene)                     |
+| `sp_cambiar_cuenta_sinpe`     | Pasar la afiliación a otra cuenta (si falla, se conserva la original) |
+| `sp_transferir_sinpe`         | Transferir de una cuenta propia a un número de teléfono               |
+| `sp_transferir_iban`          | Transferir de una cuenta propia a una cuenta IBAN                     |
+| `sp_consultar_movimientos`    | Movimientos y totales de una cuenta en un período                     |
+
+**Usuario de la aplicación:** la app se conecta como `sinpe_app`, que solo tiene permisos `SELECT`
+y `EXECUTE`. No puede hacer `INSERT`, `UPDATE` ni `DELETE`: toda escritura pasa obligatoriamente
+por un procedimiento.
+
+## 4. Manual de instalación
+
+### Requisitos
+
+- **MySQL 8** (con acceso como `root`)
+- **Node.js 24** y **npm 11**
+
+### Pasos
+
+1. **Descargar el proyecto** y abrir una terminal en su carpeta.
+
+2. **Crear la base de datos** como `root`, cargando los tres scripts **en orden y por separado**:
 
    ```sh
-   mysql -u root -p < db/01_esquema_y_datos.sql
-   mysql -u root -p < db/02_triggers.sql
-   mysql -u root -p < db/03_procedimientos.sql
+   mysql -u root -p --default-character-set=utf8mb4 < db/01_esquema_y_datos.sql
+   mysql -u root -p --default-character-set=utf8mb4 < db/02_triggers.sql
+   mysql -u root -p --default-character-set=utf8mb4 < db/03_procedimientos.sql
    ```
 
-   In PowerShell, which has no `<` redirection, wrap each line: `cmd /c "mysql -u root -p < db\01_esquema_y_datos.sql"`.
-   Load each file on its own: chaining them with `-e "source a; source b"` leaves the procedures
-   uninstalled because of `DELIMITER`.
+   - En **PowerShell** el símbolo `<` no funciona; use `cmd /c` en cada línea, por ejemplo:
+     `cmd /c "mysql -u root -p --default-character-set=utf8mb4 < db\01_esquema_y_datos.sql"`.
+   - `--default-character-set=utf8mb4` hace que las tildes de los mensajes se guarden bien.
+   - No los encadene con `-e "source a; source b"`: por el `DELIMITER`, los procedimientos no se
+     instalan.
+   - `01` **borra y recrea la base**. Para volver a los datos de prueba, cargue de nuevo `01`, `02` y
+     `03`. El usuario `sinpe_app` y su contraseña se conservan.
 
-   - `01` drops and creates the schema and loads the seed data (24 clients, 36 accounts, 38
-     phones, 24 SINPE enrollments, 36 client logins) and the initial enrollment history.
-   - `02` creates the triggers. `03` creates the stored procedures and the application user
-     `sinpe_app`@`localhost` with `SELECT, EXECUTE` only.
-   - To reinstall, run the three again. Data is recreated; `sinpe_app` and its password are kept.
-
-2. **Change the example password** of `sinpe_app` (set in `03_procedimientos.sql`):
+3. **Cambiar la contraseña de ejemplo** del usuario `sinpe_app` (viene en `03_procedimientos.sql`):
 
    ```sql
-   ALTER USER 'sinpe_app'@'localhost' IDENTIFIED BY '<your password>';
+   ALTER USER 'sinpe_app'@'localhost' IDENTIFIED BY '<su contraseña>';
    ```
 
-3. **Create `.env`** from the template and fill in every value:
+4. **Crear el archivo `.env`** a partir de la plantilla y completar cada valor:
 
    ```sh
    cp .env.example .env
    ```
 
-   - `DB_PASSWORD`: the password from step 2.
-   - `SESSION_SECRET`: at least 32 random characters, e.g.
-     `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+   | Variable             | Valor                                                 |
+   | -------------------- | ----------------------------------------------------- |
+   | `NODE_ENV`           | `development`                                         |
+   | `PORT`               | `3000`                                                |
+   | `DB_HOST`, `DB_PORT` | `localhost`, `3306`                                   |
+   | `DB_USER`            | `sinpe_app`                                           |
+   | `DB_PASSWORD`        | La contraseña del paso 3                              |
+   | `DB_NAME`            | `sinpe_movil`                                         |
+   | `SESSION_SECRET`     | Al menos 32 caracteres al azar (ver el comando abajo) |
+   | `APP_USER`           | `admin`                                               |
+   | `APP_PASSWORD_HASH`  | Ver el paso 6                                         |
 
-4. **Install dependencies:** `npm install`
+   Para generar `SESSION_SECRET`:
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
-5. **Set the administrator password:** `npm run hash-password`, type the password, and paste the
-   printed `APP_PASSWORD_HASH=...` line into `.env`.
+5. **Instalar las dependencias:** `npm install`
 
-6. **Run:** `npm run dev` and open <http://localhost:3000>.
+6. **Definir la contraseña del administrador:** ejecute `npm run hash-password`, escriba la
+   contraseña (para la demostración: `Juntaucr2026`) y pegue la línea `APP_PASSWORD_HASH=...` que
+   imprime en el `.env`. Cada variable debe aparecer una sola vez.
 
-The app refuses to start, with a clear message, if any required variable is missing.
+7. **Iniciar:** `npm run dev` y abrir <http://localhost:3000>.
 
-### Test credentials
+Si falta alguna variable, la app no arranca y dice cuál falta.
 
-| Role          | Entity                           | User                                                                | Password       |
-| ------------- | -------------------------------- | ------------------------------------------------------------------- | -------------- |
-| Administrador | Any (the one chosen)             | `admin`                                                             | `Juntaucr2026` |
-| Cliente       | Each one where it has an account | First name + `.` + first surname, e.g. `leonardo.aguilar` (BCR, BP) | `Cliente2026`  |
+## 5. Credenciales de prueba
 
-The administrator password works once step 5 was done with it.
+| Rol           | Entidad                   | Usuario            | Contraseña     |
+| ------------- | ------------------------- | ------------------ | -------------- |
+| Administrador | Cualquiera (la que elija) | `admin`            | `Juntaucr2026` |
+| Cliente       | Donde tenga cuenta        | Ver la lista abajo | `Cliente2026`  |
 
-## npm scripts
+El usuario de un cliente es **primer nombre + punto + primer apellido**, en minúsculas y sin
+tildes. Solo puede entrar en las entidades donde tiene cuenta:
 
-| Script                  | What it does                                                                             |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| `npm run dev`           | Starts the server with `.env` and restarts it when files change                          |
-| `npm test`              | Runs the `node:test` suites in `test/` (validators, formatting, roles, password hashing) |
-| `npm run lint`          | ESLint                                                                                   |
-| `npm run format`        | Prettier                                                                                 |
-| `npm run hash-password` | Prints a scrypt hash for `APP_PASSWORD_HASH`                                             |
+| Entidad | Clientes (cuenta)                                                                                                                                                                                                                                                             |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **BCR** | `leonardo.aguilar` (001), `cristopher.buso` (005), `dilan.gonzalez` (009), `john.marin` (013), `jandany.moya` (017), `steven.ramirez` (021), `hugo.arauz` (026 USD), `cristopher.mora` (030 USD), `ivan.altamirano` (033), `kendall.montero` (035), `scarlette.rosales` (036) |
+| **BN**  | `ivan.altamirano` (002), `keity.chavarria` (006), `reiko.gonzalez` (010), `kendall.montero` (014), `astrid.munguia` (018), `scarlette.rosales` (022), `hugo.gurdian` (029 USD), `darlin.chaves` (034 BLOQUEADA)                                                               |
+| **BP**  | `hugo.arauz` (003), `darlin.chaves` (007), `jefferson.granados` (011), `cristopher.mora` (015), `lucia.palacio` (019), `bayron.sanchez` (023), `leonardo.aguilar` (025 USD), `dilan.gonzalez` (028 USD), `steven.ramirez` (032 USD)                                           |
+| **BAC** | `hairon.azofeifa` (004), `mariela.chinchilla` (008), `hugo.gurdian` (012), `camila.mora` (016), `diego.pastran` (020), `diego.sanchez` (024), `keity.chavarria` (027 USD), `astrid.munguia` (031 USD)                                                                         |
 
-## Architecture
+Las cuentas son en colones salvo que diga USD. Los IBAN siguen el formato `CR12` + `0` + código
+del banco + número de cuenta en 14 dígitos; por ejemplo, la 001 del BCR es
+`CR12015200000000000001`.
 
-```
-HTTP request
-  → routes/        path + middlewares + controller
-  → controllers/   read the request, validate, call the service, send the response
-  → services/      use-case orchestration (e.g. transfer = CALL + read the receipt)
-  → repositories/  the only place with SQL (SELECT and CALL sp_*)
-  → MySQL          business rules, transactions and triggers (source of truth)
-```
+**Usuarios útiles para la demostración:**
 
-- `src/validators/`: pure functions that return clean data or throw `ValidationError`.
-- `src/middlewares/`: session and role checks (`requireAuth`, `requireRole`), login rate limit, a
-  single error handler.
-- `public/`: plain HTML, CSS and ES modules served by Express, one page per menu section.
-  Shared modules: `api.js` (fetch wrapper, 401 → login), `dom.js` (safe DOM builders),
-  `format.js` (names, phones, IBAN, money), `layout.js` (per-role header, session and role check).
+- `leonardo.aguilar` (BCR): ve los botones de **casos de prueba** en Transferir.
+- `jandany.moya` (BCR): cuenta 017 con ₡507 847, para probar el **límite diario** (₡200 000).
+- `hugo.arauz` (BCR): solo tiene una cuenta en **dólares**.
+- `ivan.altamirano` (BN y BCR): su número `8000-0002` está afiliado en el BN.
 
-## Security
+## 6. Manual de usuario
 
-- **Authentication:** the administrator comes from `.env`; clients from `cliente_entidad`, one
-  user per entity. Passwords are stored only as scrypt hashes with a random salt, created in Node
-  (procedures only receive the hash) and compared with `crypto.timingSafeEqual`. scrypt always
-  runs, even for unknown users, so the response time does not reveal them. Any failure gets one
-  generic message, which never says if the user exists in another entity. Failed logins are
-  rate-limited to 5 per 15 minutes per IP (successful ones do not count).
-- **Authorization:** `requireRole` answers 403 on the routes of the other role. The entity and the
-  client **always come from the session**: `entityId`, `bankId` and `clientId` are rejected in
-  request bodies, and the procedures check that the origin account belongs to that client and
-  entity. The page-level role check is only a convenience; the server protects the data.
-- **Entity isolation:** an administrator only sees data of its entity. Teléfonos leaves out phones
-  enrolled in another entity. The Afiliar and Informes selects still list them, without saying
-  where, so the database is the one that rejects an invalid enrollment.
-- **Session:** `express-session`, cookie `httpOnly` + `sameSite=strict` (+ `secure` in
-  production), new session id on login, destroyed on logout, 15-minute idle timeout.
-- **Every `/api/*` route except login and `GET /api/auth/entities` requires a session.**
-- **HTTP hardening:** `helmet` with a strict CSP (`script-src 'self'`, no inline scripts or
-  handlers; Google Fonts allowed for styles and fonts), `x-powered-by` disabled, 10 kB JSON body
-  limit, write requests must be `application/json`.
-- **Input:** every body and query parameter is validated on the server (formats, lengths from
-  the schema, enums, real calendar dates) and unknown fields are rejected.
-- **SQL:** placeholders only; SQL exists only in `src/repositories/`.
-- **XSS:** data is inserted with `textContent` / DOM builders, never `innerHTML`.
-- **Errors:** clients never see stacks or SQL. Messages from the procedures (`SIGNAL 45000`) are
-  shown as they are. Server logs omit SQL text and parameter values.
-- **Least privilege:** the app connects as `sinpe_app`, which cannot `INSERT`, `UPDATE` or
-  `DELETE`. Every write goes through a stored procedure running with its definer's rights.
+### Iniciar sesión
 
-## Data integrity
+1. Elija la **entidad financiera**, escriba el **usuario** y la **contraseña** y pulse **Entrar**.
+2. El administrador llega a **Clientes** y el cliente a **Inicio**.
+3. Si algo está mal, el mensaje es siempre el mismo ("Usuario o contraseña incorrectos para la
+   entidad seleccionada"), sin decir qué dato falló. Después de 5 intentos fallidos, el acceso se
+   bloquea 15 minutos.
+4. La sesión se cierra sola tras **15 minutos sin actividad**, o con **Cerrar sesión**.
 
-- Stored procedures own all writes, transactions and locking (`FOR UPDATE` in transfers).
-  The backend never reimplements or bypasses them.
-- Money is never a JavaScript float: `DECIMAL` values travel as strings and the balance preview
-  uses integer cents.
-- `dateStrings: true` avoids time-zone shifts.
-- Submit / confirm buttons are disabled while a request is pending (no double transfers).
-- After every write the affected data is read again from the database.
-- Transfer receipt: the `CALL` and `SELECT LAST_INSERT_ID()` run on the same connection. Like a
-  real SINPE Móvil receipt it shows no balances, and a phone transfer never returns the IBAN
-  behind the recipient's phone.
+El encabezado muestra siempre la entidad, el rol y el usuario.
 
-## Known limitations
+### Administrador
 
-- **In-memory session store:** sessions are lost when the server restarts and it only works with
-  a single instance. Fine for this local demo; a shared store would be needed to deploy it.
-- **Simultaneous opposite transfers:** each transfer locks its origin account first, so A → B and
-  B → A at the same moment can deadlock. MySQL rolls one back: no money moves and that client sees
-  "Error interno". Trying again works.
-- **Password hint on the login screen:** the prototype shows the test credentials, and the app
-  keeps them to match the prototype. This is an accepted risk for a local demo; remove that line
-  before using the app anywhere else. The seed data also has one shared test password.
-- **Conservation of the total:** the exercise asked to show it, but the receipt follows the real
-  service and shows no balances. The procedures still guarantee it (both accounts change in one
-  transaction); it can be checked by comparing the balances in Cuentas IBAN.
-- **Recipient lookup:** a logged-in client can look up the name of a phone or IBAN, as in the real
-  service, and that endpoint has no rate limit. It only returns the compact name and the entity.
-- **No forced password change:** clients keep the temporary password, because the prototype has no
-  such screen.
-- **`secure` cookies behind a proxy:** in production the cookie is `secure`; if the app runs
-  behind a reverse proxy, Express' `trust proxy` setting must also be configured.
+Menú: **Clientes · Cuentas IBAN · Teléfonos · SINPE Móvil · Informes**. Todas las listas tienen
+estadísticas arriba y un buscador.
 
-## Screens
+**Clientes**
 
-**Login:** entity selector, user and password. It redirects each role to its home page.
+- La lista muestra los clientes de la entidad con su usuario y cuántas cuentas y teléfonos tienen.
+- **Registrar cliente:** identificación, nombres, apellidos, correo, **usuario** (3 a 50
+  caracteres: minúsculas, números, punto o guion bajo) y **contraseña temporal** (mínimo 8
+  caracteres). El cliente se crea ACTIVO. El usuario `admin` está reservado.
+- Si la persona ya es cliente de **otro banco**, se agrega a este con su misma identificación. Los
+  nombres y el correo escritos deben coincidir con los que ya tiene; si no, se rechaza con "Los
+  datos no coinciden con la persona registrada con esa identificación".
 
-**Administrador** (menu: Clientes · Cuentas IBAN · Teléfonos · SINPE Móvil · Informes). It does not
-transfer money or see client movements.
+**Cuentas IBAN**
 
-| Screen       | What it does                                                         | Database objects                                                                                                                                            |
-| ------------ | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Clientes     | List, stats, search, register with username and temporary password   | `sp_registrar_cliente`, `cliente_entidad`                                                                                                                   |
-| Cuentas IBAN | List, stats, search, register (the entity comes from the session)    | `sp_registrar_cuenta`                                                                                                                                       |
-| Teléfonos    | List, stats, search, change owner. Clients register their own phones | `sp_cambiar_titular_telefono`, `trg_telefono_validar_update`                                                                                                |
-| SINPE Móvil  | Enroll, unenroll, change account                                     | `sp_afiliar_sinpe`, `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe`, `trg_validar_afiliacion`, `trg_historial_afiliacion`, `trg_afiliacion_auditar_delete` |
-| Informes     | Enrollment history of a phone, phones enrolled to an account         | `historial_afiliacion`                                                                                                                                      |
+- Lista agrupada por titular: pulse la flecha de una persona para ver sus cuentas, con saldo y
+  estado.
+- **Registrar cuenta:** titular (clientes activos), moneda, **IBAN**, saldo inicial y fecha de
+  apertura. El botón **Generar** llena el siguiente IBAN libre del banco; también se puede escribir
+  a mano. La entidad no se elige: es la de la sesión. La cuenta se crea ACTIVA.
+- **Cambiar estado** (en cada cuenta, al desplegar al titular): ACTIVA, INACTIVA o BLOQUEADA. Una
+  cuenta que no está ACTIVA **no envía ni recibe** transferencias y no se puede afiliar, pero sus
+  afiliaciones a SINPE Móvil **se conservan** (los envíos a ese número fallan hasta reactivarla).
+  Para pasar a INACTIVA el saldo debe ser cero; BLOQUEADA no lo exige.
 
-**Cliente** (menu: Inicio · Mis teléfonos · Transferir · Mis movimientos). It does not enroll phones:
-the administrator does.
+**Teléfonos**
 
-| Screen          | What it does                                                                                 | Database objects                                                         |
-| --------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Inicio          | Stats, accounts with balance, last 5 movements                                               | `cuenta_iban`, `transferencia`                                           |
-| Mis teléfonos   | List, register (the owner comes from the session)                                            | `sp_registrar_telefono`, `trg_telefono_validar_insert`                   |
-| Transferir      | From an own account, by phone or IBAN: data → review → receipt; test-case chips for Leonardo | `sp_transferir_sinpe`, `sp_transferir_iban`, `trg_transferencia_validar` |
-| Mis movimientos | Movements of an own account in a period, with totals                                         | `sp_consultar_movimientos`                                               |
+- Lista agrupada por titular: la flecha despliega sus números, si están afiliados y a qué cuenta
+  (IBAN completo). Solo aparecen los teléfonos afiliados en este banco o sin afiliar.
+- **Registrar teléfono:** titular y número de 8 dígitos. Registrar **no** afilia. Si el número ya
+  es de ese cliente o de otra persona, se rechaza.
+- **Editar** (en cada número): cambia el titular. No se permite si el teléfono está afiliado ("No
+  se puede cambiar el titular de un teléfono afiliado"): primero hay que desafiliarlo.
 
-## SINPE Móvil rules
+**SINPE Móvil**
 
-Based on how the real service works (BCCR, Banco Popular, BAC, Caja de ANDE):
+- Lista agrupada por titular de las afiliaciones de este banco, con las acciones de cada número.
+- **Afiliar teléfono:** elija el teléfono y la cuenta. Los selects muestran todos los números y
+  cuentas del banco con su estado, para que la base de datos sea la que rechaza las combinaciones
+  inválidas: cuenta de otra persona, cuenta en dólares o bloqueada, número ya afiliado aquí ("Use
+  Cambiar cuenta") o en otro banco ("Debe desafiliarse allá primero").
+- **Cambiar de cuenta:** pasa el número a otra cuenta en una sola transacción; si la nueva no es
+  válida, se conserva la afiliación original.
+- **Desafiliar:** pide confirmación y deja el evento DESAFILIACION en el historial.
 
-| Rule                                                                                           | Where                                                           |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Enrollment happens in the entity of the account, which must be ACTIVA, in CRC and of the owner | `sp_afiliar_sinpe`, `trg_validar_afiliacion`                    |
-| A number is linked to one account in the whole system; an account can have several numbers     | `UNIQUE(id_telefono)`, `sp_afiliar_sinpe`                       |
-| Enrolled in another bank: it must be unenrolled there first                                    | `sp_afiliar_sinpe`                                              |
-| Only the entity holding the enrollment can unenroll it or change its account                   | `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe`                |
-| The sender picks an own account and types the number; the destination can be in any entity     | `sp_transferir_sinpe`                                           |
-| The app shows the name of the recipient before confirming                                      | `GET /api/transfers/recipient`                                  |
-| Daily limit per account and entity (₡200 000 in the seed data)                                 | `entidad_financiera.limite_diario_sinpe`, `sp_transferir_sinpe` |
-| The IBAN carries the entity code (`CR` + 2 digits + `0` + 3-digit code + 14 digits)            | `entidad_financiera.codigo_iban`, `sp_registrar_cuenta`         |
+**Informes**
 
-Transfer validations run in this order inside the procedure: the origin belongs to the client and
-entity of the session; it is ACTIVA and in CRC; the number is registered and enrolled; the
-destination is ACTIVA; they are different accounts; the amount is positive; the daily limit; the
-balance.
+- **Afiliaciones de un teléfono:** historial de AFILIACION y DESAFILIACION en cuentas de este banco.
+- **Teléfonos asociados a una cuenta:** números afiliados hoy a una cuenta.
 
-## Requirements coverage
+### Cliente
 
-Business rules from the assignment:
+Menú: **Inicio · Mis teléfonos · Transferir · Mis movimientos**.
 
-| Rule                                                          | Enforced in the database                                      | Visible in the app                                   |
-| ------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------- |
-| 1. A client can have several accounts and phones              | `id_cliente` FK in `cuenta_iban` and `telefono_cliente`       | Clientes (Cuentas and Teléfonos columns)             |
-| 2. A phone is unique, has 8 digits and one owner              | `UNIQUE` + `CHECK` + `sp_registrar_telefono`                  | Mis teléfonos · Registrar teléfono · Error           |
-| 3. Registering a phone is not enrolling it                    | `sp_registrar_telefono` only inserts the phone                | Teléfonos ("No afiliado")                            |
-| 4. An account's phones belong to the same owner               | `trg_validar_afiliacion`                                      | Afiliar · Error (titularidad)                        |
-| 5. At most one active enrollment per phone                    | `UNIQUE(id_telefono)` + `sp_afiliar_sinpe`                    | Afiliar · Error (ya afiliado)                        |
-| 6. Only ACTIVE accounts in CRC can be enrolled                | `trg_validar_afiliacion`                                      | Afiliar · Error (cuenta no válida)                   |
-| 7. No transfers to the same account                           | `trg_transferencia_validar` + `sp_transferir_iban`            | "Misma cuenta" errors (by phone and by IBAN)         |
-| 8. Active accounts, amount > 0, enough balance, same currency | `sp_transferir_*` + `trg_transferencia_validar`               | Balance, amount, currency and blocked-account errors |
-| 9. Historical evidence and rollback                           | Audit triggers + `EXIT HANDLER` / `ROLLBACK`                  | Informes · Cambiar cuenta · Error                    |
-| 10. Changing a phone's owner without breaking enrollments     | `trg_telefono_validar_update` + `sp_cambiar_titular_telefono` | Editar teléfono · Error                              |
+**Inicio:** saludo, cantidad de cuentas, teléfonos y teléfonos afiliados; tarjetas de las cuentas
+con saldo; los últimos 5 movimientos. Botones para Transferir, Registrar teléfono y Ver todos.
 
-Queries and reports from the assignment:
+**Mis teléfonos:** sus números, si están afiliados y a qué cuenta (u "Otra entidad (BN)" si están
+afiliados en otro banco). **Registrar teléfono** agrega un número propio; no lo afilia (eso lo hace
+el banco).
 
-| Report                                      | Visible in the app                                |
-| ------------------------------------------- | ------------------------------------------------- |
-| 1. Phones per client and which are enrolled | Teléfonos (administrator), Mis teléfonos (client) |
-| 2. Phones of an IBAN account                | Informes → "Teléfonos asociados a una cuenta"     |
-| 3. Enrollment history of a phone            | Informes → "Afiliaciones de un teléfono"          |
-| 4. Sent and received transfers              | Mis movimientos                                   |
-| 5. Totals in a date range                   | Mis movimientos → period totals                   |
-| 6. Balances and conservation of the total   | Cuentas IBAN (administrator), Inicio (client)     |
+**Transferir** (tres pasos: Datos → Revisión → Comprobante)
+
+1. Elija la pestaña:
+   - **Por teléfono (SINPE Móvil):** el dinero sale de **una de sus cuentas en colones** y llega a
+     la cuenta que el destinatario tiene afiliada a su número, en cualquier banco.
+   - **Por IBAN:** de una de sus cuentas a cualquier cuenta IBAN de la misma moneda. Si la cuenta
+     de destino es de **otro banco**, aparece **Identificación del destinatario** y debe coincidir
+     con el titular.
+2. Al completar el número o el IBAN, la app muestra el **nombre y banco del destinatario**.
+3. Escriba el **monto** (hasta 2 decimales) y, si quiere, un **detalle**. En SINPE Móvil se ve
+   cuánto le queda disponible hoy de su límite diario.
+4. **Revisar transferencia** muestra el resumen y el saldo que le quedaría. **Confirmar
+   transferencia** la envía; los botones se bloquean mientras se procesa, así que no se envía dos
+   veces.
+5. El **comprobante** muestra el número de referencia (fecha + código del banco + consecutivo), el
+   monto, el origen, el destino y la comisión (siempre ₡0).
+6. Si la base de datos rechaza la transferencia, la app vuelve a Datos con el mensaje y el campo en
+   rojo.
+
+**Casos de prueba** (solo para `leonardo.aguilar` en el BCR): botones que llenan el formulario con
+los casos del enunciado: misma cuenta, permitida, otra moneda y saldo insuficiente.
+
+**Mis movimientos:** elija la cuenta y el período (por defecto, el mes actual). La tabla muestra
+fecha, tipo (Enviada / Recibida), contraparte y monto, con el total enviado y recibido del período.
+Se actualiza al cambiar cualquier filtro.
+
+## 7. Reglas de negocio
+
+**Teléfonos y afiliación (SINPE Móvil)**
+
+| Regla                                                                                       | Dónde                                            |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Un número tiene 8 dígitos, es único en el sistema y tiene un solo dueño                     | `UNIQUE` + `CHECK` + `sp_registrar_telefono`     |
+| Registrar un teléfono no lo afilia                                                          | `sp_registrar_telefono`                          |
+| Se afilia a una cuenta del mismo dueño, ACTIVA y en colones, del banco de la sesión         | `sp_afiliar_sinpe`, `trg_validar_afiliacion`     |
+| Un número está afiliado a una sola cuenta en todo el sistema; una cuenta puede tener varios | `UNIQUE(id_telefono)`                            |
+| Si está afiliado en otro banco, debe desafiliarse allá primero                              | `sp_afiliar_sinpe`                               |
+| Solo el banco que tiene la afiliación puede quitarla o cambiarla                            | `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe` |
+| No se cambia el dueño de un teléfono afiliado                                               | `trg_telefono_validar_update`                    |
+| Cada afiliación y desafiliación queda en el historial                                       | Triggers de auditoría                            |
+
+**Transferencias**
+
+| Regla                                                                                         | Dónde                                         |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| La cuenta de origen es del cliente y del banco de la sesión, y está ACTIVA                    | `sp_transferir_sinpe`, `sp_transferir_iban`   |
+| SINPE Móvil: solo en colones; el número de destino debe estar registrado y afiliado           | `sp_transferir_sinpe`                         |
+| SINPE Móvil: límite diario por cuenta (₡200 000 en los datos de prueba)                       | `entidad_financiera.limite_diario_sinpe`      |
+| IBAN: el destino existe, está ACTIVO y es de la misma moneda                                  | `sp_transferir_iban`                          |
+| IBAN entre bancos distintos: la identificación del destinatario debe ser la del titular       | `sp_transferir_iban`                          |
+| No a la misma cuenta, monto mayor que cero, saldo suficiente                                  | Procedimientos + `trg_transferencia_validar`  |
+| Débito, crédito y registro en una sola transacción, con las cuentas bloqueadas (`FOR UPDATE`) | `sp_transferir_*`                             |
+| Una cuenta INACTIVA o BLOQUEADA no envía ni recibe; INACTIVA exige saldo cero                 | `sp_cambiar_estado_cuenta`, `sp_transferir_*` |
+
+Orden de validación de SINPE Móvil: origen del cliente → origen ACTIVO y en colones → número
+registrado y afiliado → destino ACTIVO → cuentas distintas → monto positivo → límite diario →
+saldo.
+
+## 8. Seguridad e integridad de datos
+
+- **Contraseñas:** solo se guarda su hash (scrypt con sal al azar) y se compara en tiempo
+  constante. El mensaje de error de login es siempre el mismo y hay un límite de 5 intentos
+  fallidos cada 15 minutos por IP.
+- **Sesión:** cookie `httpOnly` y `sameSite=strict`, nueva sesión al entrar, cierre a los 15
+  minutos sin actividad.
+- **Permisos:** cada ruta exige sesión y rol. La entidad y el cliente salen **siempre de la
+  sesión**; si una petición trae `entityId` o `clientId`, se rechaza.
+- **Entradas:** el servidor valida cada dato (formatos, largos, fechas reales) y rechaza campos que
+  no esperaba. El SQL usa siempre parámetros (`?`), nunca texto armado.
+- **Pantalla:** los datos se insertan como texto (nunca `innerHTML`); política de seguridad de
+  contenido estricta con `helmet`.
+- **Errores:** el usuario nunca ve SQL ni detalles internos; los mensajes de los procedimientos se
+  muestran tal cual.
+- **Dinero:** nunca se usa como número decimal de JavaScript: viaja como texto y los cálculos de
+  pantalla usan céntimos enteros.
+- **Mínimo privilegio:** el usuario `sinpe_app` no puede escribir directamente en las tablas.
+
+## 9. Scripts y pruebas
+
+| Comando                 | Qué hace                                                                           |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `npm run dev`           | Inicia el servidor con `.env` y lo reinicia al cambiar archivos                    |
+| `npm test`              | Pruebas automáticas de `test/` (validadores, formato, roles, contraseñas, errores) |
+| `npm run lint`          | Revisión de código con ESLint                                                      |
+| `npm run format`        | Formato con Prettier                                                               |
+| `npm run hash-password` | Genera el hash de la contraseña del administrador                                  |
+
+## 10. Limitaciones conocidas
+
+- **Sesiones en memoria:** se pierden al reiniciar el servidor. Sirve para esta demostración local.
+- **Transferencias cruzadas simultáneas:** si A le envía a B y B a A en el mismo instante, MySQL
+  puede cancelar una de las dos (no se mueve dinero) y basta con reintentarla.
+- **Credenciales visibles en el login:** la pista de usuarios de prueba está a propósito para la
+  demostración; debe quitarse antes de usar la app en otro lugar.
+- **Búsqueda del destinatario:** un cliente puede consultar el nombre y el banco de un número o
+  IBAN, como en el servicio real; esa consulta no tiene límite de intentos.
+- **Sin comisión:** la comisión se muestra siempre en ₡0 (simplificación del prototipo).
+- **Contraseña temporal:** no se obliga a cambiarla en el primer ingreso.

@@ -86,6 +86,24 @@
             <p class="help"></p>
             <p class="field-error" hidden></p>
           </div>
+          <!-- Shown only when the destination is another entity, as SINPE requires (Cristopher's decision, Nov 7, 2026). -->
+          <div class="field" id="destination-id-field" hidden>
+            <label class="label" for="destinationIdentification"
+              >Identificación del destinatario</label
+            >
+            <input
+              class="input"
+              id="destinationIdentification"
+              name="destinationIdentification"
+              maxlength="20"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <p class="help">
+              La cuenta es de otra entidad: se valida que la identificación sea de su titular.
+            </p>
+            <p class="field-error" hidden></p>
+          </div>
         </fieldset>
 
         <div class="field">

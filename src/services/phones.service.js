@@ -8,6 +8,8 @@ const SP_MESSAGE_FIELDS = {
   'Este cliente está inactivo': 'identification',
   'El número tiene que ser 8 dígitos': 'number',
   'Este número ya está registrado': 'number',
+  'El teléfono ya está registrado a este cliente': 'number',
+  'El cliente no pertenece a esta entidad': 'clientId',
   'El nuevo titular no está registrado': 'identification',
   'El nuevo titular no pertenece a esta entidad': 'identification',
   'El teléfono no está registrado': 'number',
@@ -31,8 +33,9 @@ export const options = (entityId) => phonesRepository.findOptions(entityId);
 
 export const stats = (entityId) => phonesRepository.getStats(entityId);
 
-export async function register(clientId, number) {
-  await withFieldErrors(() => phonesRepository.create(clientId, number));
+/** Used by the client (owner = session client) and by the admin (owner chosen in the form). */
+export async function register(entityId, clientId, number) {
+  await withFieldErrors(() => phonesRepository.create(entityId, clientId, number));
 }
 
 export async function changeOwner(entityId, number, identification) {

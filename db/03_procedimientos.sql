@@ -64,19 +64,38 @@ begin
             coalesce(p_fecha_apertura, curdate()));
 end //
 
--- 2. procedimiento para registrar un telefono (el titular es el cliente de la sesion)
+-- 2. procedimiento para registrar un telefono a un cliente de la entidad
+-- lo usan el cliente (titular = el de la sesion) y el admin (titular elegido en un select); en los dos casos
+-- el titular debe ser cliente de la entidad de la sesion. El numero es unico en todo el sistema porque una
+-- linea tiene un solo dueño: si ya es de esta misma persona (lo registro en otro banco) se dice asi, y si es
+-- de otra persona no se revela de quien ni en que banco. Registrar no afilia a SINPE Movil.
 drop procedure if exists sp_registrar_telefono //
-create procedure sp_registrar_telefono(in p_id_cliente int, in p_numero varchar(8))
+create procedure sp_registrar_telefono(in p_id_entidad int, in p_id_cliente int, in p_numero varchar(8))
 begin
+    declare v_dueno int;
+
     if not exists (select 1 from cliente where id_cliente = p_id_cliente) then
         signal sqlstate '45000' set message_text = 'El cliente no está registrado';
+    end if;
+
+    if not exists (select 1 from cliente_entidad
+                   where id_cliente = p_id_cliente and id_entidad = p_id_entidad) then
+        signal sqlstate '45000' set message_text = 'El cliente no pertenece a esta entidad';
     end if;
 
     if p_numero not regexp '^[0-9]{8}$' then
         signal sqlstate '45000' set message_text = 'El número tiene que ser 8 dígitos';
     end if;
 
-    if exists (select 1 from telefono_cliente where numero = p_numero) then
+    select id_cliente into v_dueno
+    from telefono_cliente
+    where numero = p_numero;
+
+    if v_dueno = p_id_cliente then
+        signal sqlstate '45000' set message_text = 'El teléfono ya está registrado a este cliente';
+    end if;
+
+    if v_dueno is not null then
         signal sqlstate '45000' set message_text = 'Este número ya está registrado';
     end if;
 
@@ -380,18 +399,23 @@ begin
 end //
 
 -- 7. procedimiento para transferir por iban: de una cuenta propia a cualquier cuenta
+-- como en SINPE (transferencia a terceros), si la cuenta destino es de otra entidad se exige la
+-- identificacion de su titular y debe coincidir; entre cuentas de la misma entidad no se pide.
 drop procedure if exists sp_transferir_iban //
 create procedure sp_transferir_iban(
-    in p_id_entidad   int,
-    in p_id_cliente   int,
-    in p_iban_origen  varchar(30),
-    in p_iban_destino varchar(30),
-    in p_monto        decimal(15,2),
-    in p_detalle      varchar(100)
+    in p_id_entidad              int,
+    in p_id_cliente              int,
+    in p_iban_origen             varchar(30),
+    in p_iban_destino            varchar(30),
+    in p_monto                   decimal(15,2),
+    in p_detalle                 varchar(100),
+    in p_identificacion_destino  varchar(20)
 )
 begin
     declare v_id_origen      int;
     declare v_id_destino     int;
+    declare v_entidad_destino int;
+    declare v_dueno_destino  int;
     declare v_saldo_origen   decimal(15,2);
     declare v_estado_origen  varchar(10);
     declare v_estado_destino varchar(10);
@@ -416,14 +440,26 @@ begin
             signal sqlstate '45000' set message_text = 'La cuenta de origen no pertenece al cliente';
         end if;
 
-        select id_cuenta, estado, moneda
-        into v_id_destino, v_estado_destino, v_moneda_destino
+        select id_cuenta, estado, moneda, id_entidad, id_cliente
+        into v_id_destino, v_estado_destino, v_moneda_destino, v_entidad_destino, v_dueno_destino
         from cuenta_iban
         where iban = p_iban_destino
         for update;
 
         if v_id_destino is null then
             signal sqlstate '45000' set message_text = 'La cuenta destino no existe';
+        end if;
+
+        if v_entidad_destino <> p_id_entidad then
+            if p_identificacion_destino is null or trim(p_identificacion_destino) = '' then
+                signal sqlstate '45000' set message_text = 'Indique la identificación del titular de la cuenta destino';
+            end if;
+
+            if not exists (select 1 from cliente
+                           where id_cliente = v_dueno_destino
+                             and identificacion = trim(p_identificacion_destino)) then
+                signal sqlstate '45000' set message_text = 'La identificación no corresponde al titular de la cuenta destino';
+            end if;
         end if;
 
         if v_id_origen = v_id_destino then
@@ -619,6 +655,57 @@ begin
     end if;
 
     update telefono_cliente set id_cliente = v_id_cliente where numero = p_numero;
+end //
+
+
+-- 11. procedimiento para cambiar el estado de una cuenta (lo hace el administrador de su entidad)
+-- una cuenta que no esta ACTIVA no envia ni recibe transferencias y no se puede afiliar; sus
+-- afiliaciones SINPE se conservan (los envios a ese numero fallan hasta que vuelva a estar ACTIVA).
+-- como al cerrar una cuenta real, pasar a INACTIVA exige saldo cero; BLOQUEADA no, es temporal.
+drop procedure if exists sp_cambiar_estado_cuenta //
+create procedure sp_cambiar_estado_cuenta(
+    in p_id_entidad int,
+    in p_iban       varchar(30),
+    in p_estado     varchar(10)
+)
+begin
+    declare v_id_cuenta int;
+    declare v_estado    varchar(10);
+    declare v_saldo     decimal(15,2);
+
+    declare exit handler for sqlexception
+    begin
+        rollback;
+        resignal;
+    end;
+
+    if p_estado is null or p_estado not in ('ACTIVA', 'INACTIVA', 'BLOQUEADA') then
+        signal sqlstate '45000' set message_text = 'El estado no es válido';
+    end if;
+
+    start transaction;
+
+    -- se bloquea la cuenta para que una transferencia no cambie el saldo mientras se revisa
+    select id_cuenta, estado, saldo into v_id_cuenta, v_estado, v_saldo
+    from cuenta_iban
+    where iban = p_iban and id_entidad = p_id_entidad
+    for update;
+
+    if v_id_cuenta is null then
+        signal sqlstate '45000' set message_text = 'La cuenta no pertenece a esta entidad';
+    end if;
+
+    if v_estado = p_estado then
+        signal sqlstate '45000' set message_text = 'La cuenta ya está en ese estado';
+    end if;
+
+    if p_estado = 'INACTIVA' and v_saldo <> 0 then
+        signal sqlstate '45000' set message_text = 'La cuenta debe tener saldo cero para inactivarse';
+    end if;
+
+    update cuenta_iban set estado = p_estado where id_cuenta = v_id_cuenta;
+
+    commit;
 end //
 
 DELIMITER ;
