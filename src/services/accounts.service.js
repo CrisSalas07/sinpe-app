@@ -4,12 +4,12 @@ import { ValidationError } from '../utils/errors.js';
 // sp_registrar_cuenta messages that belong to one form field, so the form can highlight it.
 // The message itself is shown unchanged.
 const SP_MESSAGE_FIELDS = {
-  'El IBAN ya esta registrado': 'iban',
+  'El IBAN ya está registrado': 'iban',
   'El cliente no existe': 'clientId',
-  'El cliente esta inactivo': 'clientId',
+  'El cliente está inactivo': 'clientId',
   'El cliente no pertenece a esta entidad': 'clientId',
   'El IBAN no corresponde a esta entidad': 'iban',
-  'La moneda no existe en el catalogo': 'currency',
+  'La moneda no existe en el catálogo': 'currency',
 };
 
 export const list = (entityId) => accountsRepository.findAll(entityId);

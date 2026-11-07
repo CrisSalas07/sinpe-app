@@ -79,9 +79,3 @@ export function accountType(currency) {
 export function accountLabel(iban, currency) {
   return `${shortIban(iban)} · ${accountType(currency)}`;
 }
-
-/** Movements bring "NOMBRES PRIMER_APELLIDO": first name + surname, as elsewhere. */
-export function counterpartName(fullText) {
-  const words = fullText.split(' ');
-  return titleCase(`${words[0]} ${words.at(-1)}`);
-}

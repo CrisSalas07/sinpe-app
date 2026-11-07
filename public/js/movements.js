@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { el, tag } from './dom.js';
-import { accountLabel, counterpartName, formatMoney } from './format.js';
+import { accountLabel, formatMoney } from './format.js';
 import { initLayout } from './layout.js';
 
 const $ = (id) => document.getElementById(id);
@@ -60,7 +60,7 @@ function movementRow(row, currency) {
     {},
     el('td', {}, row.date.slice(0, 16)),
     el('td', {}, row.direction === 'ENVIADA' ? tag('Enviada', 'neutral') : tag('Recibida', 'ok')),
-    el('td', {}, counterpartName(row.counterpart)),
+    el('td', {}, row.counterpart),
     el('td', {}, formatMoney(row.amount, currency)),
   );
 }

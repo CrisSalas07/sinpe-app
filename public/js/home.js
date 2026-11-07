@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { el, tag } from './dom.js';
-import { accountType, counterpartName, formatMoney, titleCase } from './format.js';
+import { accountType, formatMoney, titleCase } from './format.js';
 import { initLayout } from './layout.js';
 
 const STATUS_TAGS = { ACTIVA: 'ok', INACTIVA: 'neutral', BLOQUEADA: 'bad' };
@@ -50,7 +50,7 @@ function movementRow(row) {
     {},
     el('td', {}, row.date.slice(0, 16)),
     el('td', {}, row.direction === 'ENVIADA' ? tag('Enviada', 'neutral') : tag('Recibida', 'ok')),
-    el('td', {}, counterpartName(row.counterpart)),
+    el('td', {}, row.counterpart),
     el('td', {}, formatMoney(row.amount, row.currency)),
   );
 }

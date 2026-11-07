@@ -4,12 +4,14 @@ import { ValidationError } from '../utils/errors.js';
 // Stored procedure / trigger messages that belong to one form field, so the form can highlight it.
 // The message itself is shown unchanged.
 const SP_MESSAGE_FIELDS = {
-  'El cliente no esta registrado': 'identification',
-  'Este cliente esta inactivo': 'identification',
-  'El numero tiene que ser 8 digitos': 'number',
-  'Este numero ya esta registrado': 'number',
+  'El cliente no está registrado': 'identification',
+  'Este cliente está inactivo': 'identification',
+  'El número tiene que ser 8 dígitos': 'number',
+  'Este número ya está registrado': 'number',
   'El nuevo titular no está registrado': 'identification',
   'El nuevo titular no pertenece a esta entidad': 'identification',
+  'El teléfono no está registrado': 'number',
+  'El teléfono no pertenece a un cliente de esta entidad': 'number',
   'No se puede cambiar el titular de un teléfono afiliado': 'identification',
 };
 

@@ -24,7 +24,7 @@ begin
     where id_telefono = new.id_telefono;
 
     if v_estado <> 'ACTIVA' then
-        signal sqlstate '45000' set message_text = 'La cuenta no esta activa';
+        signal sqlstate '45000' set message_text = 'La cuenta no está activa';
     end if;
 
     if v_moneda <> 'CRC' then
@@ -32,7 +32,7 @@ begin
     end if;
 
     if v_dueno_cuenta <> v_dueno_telefono then
-        signal sqlstate '45000' set message_text = 'El telefono y la cuenta son de clientes distintos';
+        signal sqlstate '45000' set message_text = 'El teléfono y la cuenta son de clientes distintos';
     end if;
 end //
 
@@ -107,7 +107,7 @@ begin
     from cliente where id_cliente = new.id_cliente;
 
     if v_estado = 'INACTIVO' then
-        signal sqlstate '45000' set message_text = 'Este cliente esta inactivo';
+        signal sqlstate '45000' set message_text = 'Este cliente está inactivo';
     end if;
 end //
 

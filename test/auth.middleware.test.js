@@ -32,5 +32,5 @@ test('requireRole answers 403 to the other role', () => {
   const result = run(requireRole('ADMIN'), { role: 'CLIENTE' });
   assert.equal(result.status, 403);
   assert.equal(result.next, false);
-  assert.deepEqual(result.body, { error: 'No tiene permiso para esta accion' });
+  assert.deepEqual(result.body, { error: 'No tiene permiso para esta acción' });
 });

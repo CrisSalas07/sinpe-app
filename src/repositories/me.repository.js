@@ -35,7 +35,8 @@ export async function findRecentMovements(entityId, clientId, limit) {
       t.monto AS amount,
       o.moneda AS currency,
       CASE WHEN o.id_cliente = ? AND o.id_entidad = ? THEN 'ENVIADA' ELSE 'RECIBIDA' END AS direction,
-      CONCAT(cl.nombres, ' ', cl.primer_apellido) AS counterpart
+      cl.nombres AS counterpartNames,
+      cl.primer_apellido AS counterpartSurname
     FROM transferencia t
     JOIN cuenta_iban o ON o.id_cuenta = t.id_cuenta_origen
     JOIN cuenta_iban d ON d.id_cuenta = t.id_cuenta_destino
@@ -63,7 +64,8 @@ export async function findMovements(entityId, clientId, { iban, from, to }) {
       id: row.id_transferencia,
       date: row.fecha,
       direction: row.movimiento,
-      counterpart: row.contraparte,
+      counterpartNames: row.nombres_contraparte,
+      counterpartSurname: row.apellido_contraparte,
       amount: row.monto,
     })),
     totals: { sent: totals.total_enviado, received: totals.total_recibido },

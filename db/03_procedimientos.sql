@@ -23,7 +23,7 @@ begin
     end if;
 
     if exists (select 1 from cliente where id_cliente = p_id_cliente and estado = 'INACTIVO') then
-        signal sqlstate '45000' set message_text = 'El cliente esta inactivo';
+        signal sqlstate '45000' set message_text = 'El cliente está inactivo';
     end if;
 
     select codigo_iban into v_codigo_iban
@@ -40,11 +40,11 @@ begin
     end if;
 
     if not exists (select 1 from moneda where codigo = p_moneda) then
-        signal sqlstate '45000' set message_text = 'La moneda no existe en el catalogo';
+        signal sqlstate '45000' set message_text = 'La moneda no existe en el catálogo';
     end if;
 
     if p_iban is null or p_iban not regexp '^CR[0-9]{20}$' then
-        signal sqlstate '45000' set message_text = 'IBAN invalido: debe ser CR seguido de 20 digitos';
+        signal sqlstate '45000' set message_text = 'IBAN inválido: debe ser CR seguido de 20 dígitos';
     end if;
 
     if substring(p_iban, 5, 4) <> concat('0', v_codigo_iban) then
@@ -52,7 +52,7 @@ begin
     end if;
 
     if exists (select 1 from cuenta_iban where iban = p_iban) then
-        signal sqlstate '45000' set message_text = 'El IBAN ya esta registrado';
+        signal sqlstate '45000' set message_text = 'El IBAN ya está registrado';
     end if;
 
     if p_saldo is null or p_saldo < 0 then
@@ -69,15 +69,15 @@ drop procedure if exists sp_registrar_telefono //
 create procedure sp_registrar_telefono(in p_id_cliente int, in p_numero varchar(8))
 begin
     if not exists (select 1 from cliente where id_cliente = p_id_cliente) then
-        signal sqlstate '45000' set message_text = 'El cliente no esta registrado';
+        signal sqlstate '45000' set message_text = 'El cliente no está registrado';
     end if;
 
     if p_numero not regexp '^[0-9]{8}$' then
-        signal sqlstate '45000' set message_text = 'El numero tiene que ser 8 digitos';
+        signal sqlstate '45000' set message_text = 'El número tiene que ser 8 dígitos';
     end if;
 
     if exists (select 1 from telefono_cliente where numero = p_numero) then
-        signal sqlstate '45000' set message_text = 'Este numero ya esta registrado';
+        signal sqlstate '45000' set message_text = 'Este número ya está registrado';
     end if;
 
     insert into telefono_cliente (id_cliente, numero) values (p_id_cliente, p_numero);
@@ -104,12 +104,12 @@ begin
     where id_telefono = p_id_telefono;
 
     if v_dueno_telefono is null then
-        signal sqlstate '45000' set message_text = 'El telefono no existe';
+        signal sqlstate '45000' set message_text = 'El teléfono no existe';
     end if;
 
     if not exists (select 1 from cliente_entidad
                    where id_cliente = v_dueno_telefono and id_entidad = p_id_entidad) then
-        signal sqlstate '45000' set message_text = 'El telefono no pertenece a un cliente de esta entidad';
+        signal sqlstate '45000' set message_text = 'El teléfono no pertenece a un cliente de esta entidad';
     end if;
 
     select id_cliente, id_entidad, estado, moneda
@@ -126,7 +126,7 @@ begin
     end if;
 
     if v_estado <> 'ACTIVA' then
-        signal sqlstate '45000' set message_text = 'La cuenta no esta activa';
+        signal sqlstate '45000' set message_text = 'La cuenta no está activa';
     end if;
 
     if v_moneda <> 'CRC' then
@@ -134,7 +134,7 @@ begin
     end if;
 
     if v_dueno_cuenta <> v_dueno_telefono then
-        signal sqlstate '45000' set message_text = 'El telefono y la cuenta son de clientes distintos';
+        signal sqlstate '45000' set message_text = 'El teléfono y la cuenta son de clientes distintos';
     end if;
 
     select c.id_entidad, e.codigo into v_entidad_afiliada, v_codigo_afiliada
@@ -144,12 +144,12 @@ begin
     where a.id_telefono = p_id_telefono;
 
     if v_entidad_afiliada = p_id_entidad then
-        signal sqlstate '45000' set message_text = 'El telefono ya esta afiliado en esta entidad. Use Cambiar cuenta.';
+        signal sqlstate '45000' set message_text = 'El teléfono ya está afiliado en esta entidad. Use Cambiar cuenta.';
     end if;
 
     if v_entidad_afiliada is not null then
-        set v_mensaje = concat('El telefono ya esta afiliado en otra entidad (', v_codigo_afiliada,
-                               '). Debe desafiliarse alla primero.');
+        set v_mensaje = concat('El teléfono ya está afiliado en otra entidad (', v_codigo_afiliada,
+                               '). Debe desafiliarse allá primero.');
         signal sqlstate '45000' set message_text = v_mensaje;
     end if;
 
@@ -183,12 +183,12 @@ begin
     for update;
 
     if v_id_afiliacion is null then
-        signal sqlstate '45000' set message_text = 'El numero no esta afiliado a SINPE Movil';
+        signal sqlstate '45000' set message_text = 'El número no está afiliado a SINPE Móvil';
     end if;
 
     if not exists (select 1 from cuenta_iban
                    where id_cuenta = v_id_cuenta and id_entidad = p_id_entidad) then
-        signal sqlstate '45000' set message_text = 'El telefono esta afiliado en otra entidad; solo esa entidad puede modificarlo';
+        signal sqlstate '45000' set message_text = 'El teléfono está afiliado en otra entidad; solo esa entidad puede modificarlo';
     end if;
 
     delete from afiliacion_sinpe
@@ -222,12 +222,12 @@ begin
     for update;
 
     if v_id_cuenta_actual is null then
-        signal sqlstate '45000' set message_text = 'El telefono no esta afiliado';
+        signal sqlstate '45000' set message_text = 'El teléfono no está afiliado';
     end if;
 
     if not exists (select 1 from cuenta_iban
                    where id_cuenta = v_id_cuenta_actual and id_entidad = p_id_entidad) then
-        signal sqlstate '45000' set message_text = 'El telefono esta afiliado en otra entidad; solo esa entidad puede modificarlo';
+        signal sqlstate '45000' set message_text = 'El teléfono está afiliado en otra entidad; solo esa entidad puede modificarlo';
     end if;
 
     if not exists (select 1 from cuenta_iban
@@ -236,7 +236,7 @@ begin
     end if;
 
     if v_id_cuenta_actual = p_id_cuenta_nueva then
-        signal sqlstate '45000' set message_text = 'El telefono ya esta afiliado a esa cuenta';
+        signal sqlstate '45000' set message_text = 'El teléfono ya está afiliado a esa cuenta';
     end if;
 
     delete from afiliacion_sinpe where id_telefono = p_id_telefono;
@@ -291,11 +291,11 @@ begin
 
     -- 2. la cuenta de origen esta activa y es en colones
     if v_estado_origen <> 'ACTIVA' then
-        signal sqlstate '45000' set message_text = 'La cuenta de origen no esta activa';
+        signal sqlstate '45000' set message_text = 'La cuenta de origen no está activa';
     end if;
 
     if v_moneda_origen <> 'CRC' then
-        signal sqlstate '45000' set message_text = 'SINPE Movil solo permite cuentas en CRC';
+        signal sqlstate '45000' set message_text = 'SINPE Móvil solo permite cuentas en CRC';
     end if;
 
     -- 3. el numero de destino esta registrado y afiliado en cualquier entidad
@@ -304,7 +304,7 @@ begin
     where numero = p_numero_destino;
 
     if v_tel_destino is null then
-        signal sqlstate '45000' set message_text = 'El numero de destino no esta registrado';
+        signal sqlstate '45000' set message_text = 'El número de destino no está registrado';
     end if;
 
     select id_cuenta into v_cuenta_destino
@@ -312,7 +312,7 @@ begin
     where id_telefono = v_tel_destino;
 
     if v_cuenta_destino is null then
-        signal sqlstate '45000' set message_text = 'El numero de destino no esta afiliado a SINPE Movil';
+        signal sqlstate '45000' set message_text = 'El número de destino no está afiliado a SINPE Móvil';
     end if;
 
     -- 4. la cuenta de destino esta activa
@@ -322,11 +322,11 @@ begin
     for update;
 
     if v_estado_destino <> 'ACTIVA' then
-        signal sqlstate '45000' set message_text = 'La cuenta de destino no esta activa';
+        signal sqlstate '45000' set message_text = 'La cuenta de destino no está activa';
     end if;
 
     if v_moneda_destino <> 'CRC' then
-        signal sqlstate '45000' set message_text = 'SINPE Movil solo permite cuentas en CRC';
+        signal sqlstate '45000' set message_text = 'SINPE Móvil solo permite cuentas en CRC';
     end if;
 
     -- 5. origen y destino son cuentas distintas
@@ -352,7 +352,7 @@ begin
       and fecha < curdate() + interval 1 day;
 
     if v_enviado_hoy + p_monto > v_limite then
-        signal sqlstate '45000' set message_text = 'El monto supera su limite diario de SINPE Movil';
+        signal sqlstate '45000' set message_text = 'El monto supera su límite diario de SINPE Móvil';
     end if;
 
     -- 8. hay saldo suficiente
@@ -482,7 +482,8 @@ begin
     select t.id_transferencia, t.fecha, t.tipo,
            case when t.id_cuenta_origen = v_id_cuenta then 'ENVIADA' else 'RECIBIDA' end as movimiento,
            cp.iban as iban_contraparte,
-           concat(cl.nombres, ' ', cl.primer_apellido) as contraparte,
+           cl.nombres as nombres_contraparte,
+           cl.primer_apellido as apellido_contraparte,
            t.monto
     from transferencia t
     join cuenta_iban cp on cp.id_cuenta = case when t.id_cuenta_origen = v_id_cuenta
@@ -502,6 +503,8 @@ end //
 -- 9. procedimiento para registrar un cliente en una entidad con sus credenciales (se crea ACTIVO)
 -- la persona es unica por identificacion: si ya es cliente de otra entidad no se crea otra persona,
 -- solo se agrega su relacion con esta entidad. p_password_hash ya viene con hash desde la aplicacion.
+-- si la persona ya existe, los datos escritos deben coincidir con los guardados: asi no se ignoran en
+-- silencio y una entidad no recibe datos que solo conocia otra. El mensaje no dice que campo fallo.
 drop procedure if exists sp_registrar_cliente //
 create procedure sp_registrar_cliente(
     in p_id_entidad       int,
@@ -530,7 +533,22 @@ begin
 
     if exists (select 1 from cliente_entidad
                where id_cliente = v_id_cliente and id_entidad = p_id_entidad) then
-        signal sqlstate '45000' set message_text = 'El cliente ya esta registrado en esta entidad';
+        signal sqlstate '45000' set message_text = 'El cliente ya está registrado en esta entidad';
+    end if;
+
+    if v_id_cliente is not null then
+        if not exists (select 1 from cliente
+                       where id_cliente = v_id_cliente
+                         and nombres = p_nombres
+                         and primer_apellido = p_primer_apellido
+                         and segundo_apellido = p_segundo_apellido
+                         and correo = p_correo) then
+            signal sqlstate '45000' set message_text = 'Los datos no coinciden con la persona registrada con esa identificación';
+        end if;
+
+        if exists (select 1 from cliente where id_cliente = v_id_cliente and estado = 'INACTIVO') then
+            signal sqlstate '45000' set message_text = 'El cliente está inactivo';
+        end if;
     end if;
 
     if exists (select 1 from cliente
@@ -540,7 +558,7 @@ begin
 
     if exists (select 1 from cliente_entidad
                where id_entidad = p_id_entidad and usuario = p_usuario) then
-        signal sqlstate '45000' set message_text = 'El usuario ya esta en uso en esta entidad';
+        signal sqlstate '45000' set message_text = 'El usuario ya está en uso en esta entidad';
     end if;
 
     if v_id_cliente is null then
@@ -579,7 +597,7 @@ begin
 
     -- misma regla que trg_telefono_validar_insert: un cliente inactivo no puede recibir un telefono
     if exists (select 1 from cliente where id_cliente = v_id_cliente and estado = 'INACTIVO') then
-        signal sqlstate '45000' set message_text = 'Este cliente esta inactivo';
+        signal sqlstate '45000' set message_text = 'Este cliente está inactivo';
     end if;
 
     select id_cliente into v_id_titular_actual
@@ -592,7 +610,7 @@ begin
 
     if not exists (select 1 from cliente_entidad
                    where id_cliente = v_id_titular_actual and id_entidad = p_id_entidad) then
-        signal sqlstate '45000' set message_text = 'El telefono no pertenece a un cliente de esta entidad';
+        signal sqlstate '45000' set message_text = 'El teléfono no pertenece a un cliente de esta entidad';
     end if;
 
     if not exists (select 1 from cliente_entidad

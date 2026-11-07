@@ -14,13 +14,20 @@ const CLIENT_FROM = `
   FROM cliente_entidad ce
   JOIN cliente c ON c.id_cliente = ce.id_cliente`;
 
-/** Clients of an entity with how many accounts (in that entity) and phones they have. */
+/**
+ * Clients of an entity with how many accounts (in that entity) and phones they have. Phones
+ * enrolled in another entity are not counted, as in Teléfonos (phones.repository.js).
+ */
 export async function findAll(entityId) {
   const [rows] = await pool.query(
     `SELECT ${CLIENT_COLUMNS},
       (SELECT COUNT(*) FROM cuenta_iban a
        WHERE a.id_cliente = c.id_cliente AND a.id_entidad = ce.id_entidad) AS accounts,
-      (SELECT COUNT(*) FROM telefono_cliente t WHERE t.id_cliente = c.id_cliente) AS phones
+      (SELECT COUNT(*) FROM telefono_cliente t
+       LEFT JOIN afiliacion_sinpe af ON af.id_telefono = t.id_telefono
+       LEFT JOIN cuenta_iban cu ON cu.id_cuenta = af.id_cuenta
+       WHERE t.id_cliente = c.id_cliente
+         AND (af.id_afiliacion IS NULL OR cu.id_entidad = ce.id_entidad)) AS phones
     ${CLIENT_FROM}
     WHERE ce.id_entidad = ?
     ORDER BY c.identificacion`,

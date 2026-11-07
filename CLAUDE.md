@@ -133,7 +133,7 @@ README.md
   - a **15-minute idle timeout** (rolling session), since this is a banking app.
   - The memory store is acceptable for this single-instance demo; say so in the README.
 - `requireAuth` protects **every** `/api/*` route except login and `/api/auth/entities`. The frontend redirects to the login page on 401.
-- `requireRole('ADMIN' | 'CLIENTE')` answers 403 "No tiene permiso para esta accion".
+- `requireRole('ADMIN' | 'CLIENTE')` answers 403 "No tiene permiso para esta acción".
 - **`entityId`, `bankId` and `clientId` are never accepted from the HTTP client on protected routes.** They always come from the session, and every query and write is filtered by them.
 - Login answers with one generic message on any failure: "Usuario o contraseña incorrectos para la entidad seleccionada". Never reveal which field was wrong or whether the user exists in another entity. The Figma's more specific message is wrong and must not be used.
 - Client passwords are hashed in Node with `utils/password.js`; stored procedures only receive the hash.
@@ -188,7 +188,7 @@ The entity and the client always come from the session.
 
 | Procedure | Parameters | Rules |
 |---|---|---|
-| `sp_registrar_cliente` | p_id_entidad, p_identificacion, p_nombres, p_primer_apellido, p_segundo_apellido, p_correo, p_usuario, p_password_hash | No status (ACTIVO by default). Creates the person if new, then adds the `cliente_entidad` row. Errors: "El cliente ya esta registrado en esta entidad", username taken, "El correo ya pertenece a otro cliente". One transaction with rollback. |
+| `sp_registrar_cliente` | p_id_entidad, p_identificacion, p_nombres, p_primer_apellido, p_segundo_apellido, p_correo, p_usuario, p_password_hash | No status (ACTIVO by default). Creates the person if new, then adds the `cliente_entidad` row. Errors: "El cliente ya está registrado en esta entidad", username taken, "El correo ya pertenece a otro cliente". If the person already exists (client of another entity), names, surnames and email must match the stored ones, otherwise one generic "Los datos no coinciden con la persona registrada con esa identificación" (never says which field); an INACTIVO person gets "El cliente está inactivo" (Cristopher's decision, Nov 7, 2026). One transaction with rollback. |
 | `sp_registrar_cuenta` | p_id_entidad, p_id_cliente, p_moneda, p_iban, p_saldo, p_fecha_apertura | No status (ACTIVA). "El cliente no pertenece a esta entidad". "El IBAN no corresponde a esta entidad" if `SUBSTRING(iban, 5, 4) <> CONCAT('0', codigo_iban)`. |
 | `sp_registrar_telefono` | p_id_cliente, p_numero | The owner is the session client. Format and duplicate checks stay. |
 | `sp_cambiar_titular_telefono` | p_id_entidad + current params | Current and new owner must be clients of the entity. The enrolled-phone trigger stays. |
@@ -197,9 +197,9 @@ The entity and the client always come from the session.
 | `sp_cambiar_cuenta_sinpe` | p_id_entidad, p_id_telefono, p_id_cuenta_nueva | Validations move inside the transaction. On failure the original enrollment is kept. |
 | `sp_transferir_sinpe` | p_id_entidad, p_id_cliente, p_iban_origen, p_numero_destino, p_monto, p_detalle (NULL allowed) | Transfer rules below, `FOR UPDATE` on both accounts, same transaction as before. |
 | `sp_transferir_iban` | p_id_entidad, p_id_cliente, p_iban_origen, p_iban_destino, p_monto, p_detalle (NULL allowed) | Transfer rules below. |
-| `sp_consultar_movimientos` | p_id_cliente, p_id_entidad, iban, fecha_inicio, fecha_fin → **2 result sets** (movements with counterpart, totals) | "La cuenta no pertenece al cliente" if the account is not the client's in that entity. |
+| `sp_consultar_movimientos` | p_id_cliente, p_id_entidad, iban, fecha_inicio, fecha_fin → **2 result sets** (movements with the counterpart's `nombres_contraparte` and `apellido_contraparte`, totals) | "La cuenta no pertenece al cliente" if the account is not the client's in that entity. |
 
-The triggers of `02` stay. New `SIGNAL` messages go without accents, like the current ones.
+The triggers of `02` stay. Every `SIGNAL` message is written with correct Spanish accents (Cristopher's decision, Nov 7, 2026; it replaces the earlier no-accents rule).
 
 ### Schema changes (01)
 ```
@@ -231,10 +231,10 @@ A person is unique system-wide (by identification); what varies is their relatio
 **Afiliar (admin), in this order:**
 1. The phone must belong to a client of the session entity.
 2. The account must be of the session entity, same owner as the phone, ACTIVA and CRC. The procedure checks this **before** points 3 and 4, with the same messages as `trg_validar_afiliacion` (which stays as the last defense): every owner of a BCR USD account (026, 030) has all phones enrolled in BP, so otherwise "cuenta no válida" could not be reproduced.
-3. Enrolled in **this** entity: "El telefono ya esta afiliado en esta entidad. Use Cambiar cuenta."
-4. Enrolled in **another** entity: "El telefono ya esta afiliado en otra entidad (<código>). Debe desafiliarse alla primero."
+3. Enrolled in **this** entity: "El teléfono ya está afiliado en esta entidad. Use Cambiar cuenta."
+4. Enrolled in **another** entity: "El teléfono ya está afiliado en otra entidad (<código>). Debe desafiliarse allá primero."
 
-**Desafiliar / Cambiar cuenta (admin):** only the entity holding the current enrollment. Otherwise: "El telefono esta afiliado en otra entidad; solo esa entidad puede modificarlo". The new account must also be of the session entity.
+**Desafiliar / Cambiar cuenta (admin):** only the entity holding the current enrollment. Otherwise: "El teléfono está afiliado en otra entidad; solo esa entidad puede modificarlo". The new account must also be of the session entity.
 
 **Transfer by SINPE Móvil (client). Validations, in this order, all inside the procedure:**
 1. The origin account exists, belongs to the session client and the session entity; otherwise rejected (protects against request tampering).
@@ -243,7 +243,7 @@ A person is unique system-wide (by identification); what varies is their relatio
 4. The destination account is ACTIVA.
 5. Origin and destination are different accounts.
 6. Amount > 0.
-7. **Daily limit:** today's SINPE sends from that account + the amount cannot exceed the entity limit: "El monto supera su limite diario de SINPE Movil".
+7. **Daily limit:** today's SINPE sends from that account + the amount cannot exceed the entity limit: "El monto supera su límite diario de SINPE Móvil".
 8. Sufficient balance.
 
 The client does **not** need their own enrolled phone to send. If the origin account has an enrolled phone, it is stored in `transferencia_sinpe.id_telefono_origen` (the earliest enrolled, since an account can have several); otherwise NULL.
@@ -268,7 +268,7 @@ Read `db/01_esquema_y_datos.sql` before writing any query.
 After the `CALL`, on the **same connection**, read the receipt: number, date, amount, type, detail, origin (compact name, IBAN, entity code) and destination (compact name, entity code, and the phone or the IBAN). **No balances.** In a SINPE Móvil transfer the destination IBAN is not returned, only the phone.
 
 ### Stored procedure messages
-Several `SIGNAL` messages have no accents (e.g. "La cuenta no esta activa"). Leave them as they are and show them as is.
+`SIGNAL` messages carry accents (e.g. "La cuenta no está activa") and are shown as is. The service maps that link a message to a form field must use the exact accented text.
 
 ## 8. Design (Figma)
 

@@ -7,9 +7,11 @@ import { RESERVED_USERNAME_MESSAGE } from '../validators/clients.validator.js';
 // sp_registrar_cliente reports errors without naming the field; the form needs it to
 // highlight the input (as in Figma). The message itself is shown unchanged.
 const SP_MESSAGE_FIELDS = {
-  'El cliente ya esta registrado en esta entidad': 'identification',
+  'El cliente ya está registrado en esta entidad': 'identification',
+  'Los datos no coinciden con la persona registrada con esa identificación': 'identification',
+  'El cliente está inactivo': 'identification',
   'El correo ya pertenece a otro cliente': 'email',
-  'El usuario ya esta en uso en esta entidad': 'username',
+  'El usuario ya está en uso en esta entidad': 'username',
 };
 
 export const list = (entityId) => clientsRepository.findAll(entityId);

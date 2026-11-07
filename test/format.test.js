@@ -4,7 +4,6 @@ import {
   accountLabel,
   accountType,
   compactName,
-  counterpartName,
   formatMoney,
   formatPhone,
   fullName,
@@ -57,9 +56,4 @@ test('account labels follow the currency', () => {
   assert.equal(accountType('CRC'), 'Ahorros colones');
   assert.equal(accountType('USD'), 'Ahorros dólares');
   assert.equal(accountLabel('CR12015200000000000001', 'CRC'), 'CR12 …001 · Ahorros colones');
-});
-
-test('counterpart: first name + surname from the text of the movements', () => {
-  assert.equal(counterpartName('IVAN CALET ALTAMIRANO'), 'Ivan Altamirano');
-  assert.equal(counterpartName('DIEGO PASTRAN'), 'Diego Pastran');
 });

@@ -3,22 +3,22 @@ import { ValidationError } from '../utils/errors.js';
 import { compactName } from '../utils/names.js';
 
 const ORIGIN_NOT_OWNED = 'La cuenta de origen no pertenece al cliente';
-const NOT_REGISTERED = 'El numero de destino no esta registrado';
-const NOT_ENROLLED = 'El numero de destino no esta afiliado a SINPE Movil';
+const NOT_REGISTERED = 'El número de destino no está registrado';
+const NOT_ENROLLED = 'El número de destino no está afiliado a SINPE Móvil';
 const NO_DESTINATION_ACCOUNT = 'La cuenta destino no existe';
 
 // Stored procedure / trigger messages that belong to one form field, so the form can highlight it.
 // The message itself is shown unchanged. Rules that could be about either account stay unmapped.
 const SINPE_FIELDS = {
   [ORIGIN_NOT_OWNED]: 'originIban',
-  'La cuenta de origen no esta activa': 'originIban',
-  'SINPE Movil solo permite cuentas en CRC': 'originIban',
+  'La cuenta de origen no está activa': 'originIban',
+  'SINPE Móvil solo permite cuentas en CRC': 'originIban',
   [NOT_REGISTERED]: 'destinationNumber',
   [NOT_ENROLLED]: 'destinationNumber',
-  'La cuenta de destino no esta activa': 'destinationNumber',
+  'La cuenta de destino no está activa': 'destinationNumber',
   'No se puede transferir a la misma cuenta': 'destinationNumber',
   'El monto debe ser positivo': 'amount',
-  'El monto supera su limite diario de SINPE Movil': 'amount',
+  'El monto supera su límite diario de SINPE Móvil': 'amount',
   'Saldo insuficiente': 'amount',
 };
 const IBAN_FIELDS = {
