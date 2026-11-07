@@ -1,6 +1,15 @@
 import { api } from './api.js';
-import { clearFormErrors, el, fillRows, showFormError, tag } from './dom.js';
-import { compactName, formatPhone, fullName, ibanTail, searchText } from './format.js';
+import {
+  clearFormErrors,
+  count,
+  el,
+  fillRows,
+  groupBy,
+  groupedRows,
+  showFormError,
+  tag,
+} from './dom.js';
+import { compactName, formatPhone, fullName, searchText } from './format.js';
 import { initLayout } from './layout.js';
 
 const views = {
@@ -10,14 +19,19 @@ const views = {
 const rows = document.getElementById('rows');
 const search = document.getElementById('search');
 const listAlert = document.getElementById('list-alert');
+const listOk = document.getElementById('list-ok');
 const editForm = document.getElementById('edit-form');
 
 let phones = [];
 let editingNumber = null;
+const openGroups = new Set(); // owners unfolded in the list, kept across reloads
 
 await initLayout('phones', 'ADMIN');
 window.addEventListener('hashchange', showView);
-search.addEventListener('input', renderRows);
+search.addEventListener('input', () => {
+  listOk.hidden = true; // the confirmation is about the last edit, not about what is now listed
+  renderRows();
+});
 editForm.addEventListener('submit', onEdit);
 await Promise.all([loadPhones(), loadOwners()]);
 showView();
@@ -38,6 +52,7 @@ function showView() {
   for (const [name, node] of Object.entries(views)) node.hidden = name !== view;
 
   if (view === 'edit') {
+    listOk.hidden = true;
     editingNumber = phone.number;
     editForm.reset();
     clearFormErrors(editForm, alertOf(editForm));
@@ -104,64 +119,75 @@ async function loadOwners() {
   }
 }
 
+// The full IBAN, as in Cuentas IBAN, so the account can be recognised ('…001' alone could not).
 function enrolledAccount(phone) {
-  return phone.enrolledIban ? ibanTail(phone.enrolledIban) : '—';
+  return phone.enrolledIban ?? '—';
 }
 
+function enrolledSummary(owned) {
+  const enrolled = owned.filter((phone) => phone.enrolled).length;
+  return enrolled === 0 ? 'Sin afiliar' : count(enrolled, 'afiliado', 'afiliados');
+}
+
+// One row per owner; their phones (with "Editar") unfold below it.
 function renderRows() {
   const query = searchText(search.value.trim());
   const visible = phones.filter((phone) => phone.search.includes(query));
-  fillRows(
-    rows,
-    visible.map((phone) =>
+  const groups = groupBy(visible, (phone) => phone.ownerIdentification).map((owned) => ({
+    key: owned[0].ownerIdentification,
+    label: compactName(owned[0].ownerNames, owned[0].ownerFirstSurname),
+    summary: [count(owned.length, 'teléfono', 'teléfonos'), enrolledSummary(owned), '', ''],
+    items: owned.map((phone) => [
+      formatPhone(phone.number),
+      phone.enrolled ? tag('Afiliado', 'ok') : tag('No afiliado', 'neutral'),
+      el('span', { class: phone.enrolledIban ? 'mono' : null }, enrolledAccount(phone)),
       el(
-        'tr',
-        {},
-        el('td', {}, formatPhone(phone.number)),
-        el('td', {}, compactName(phone.ownerNames, phone.ownerFirstSurname)),
-        el('td', {}, phone.enrolled ? tag('Afiliado', 'ok') : tag('No afiliado', 'neutral')),
-        el('td', { class: phone.enrolledIban ? 'mono' : null }, enrolledAccount(phone)),
-        el(
-          'td',
-          {},
-          el(
-            'a',
-            {
-              class: 'chip',
-              href: `#editar/${phone.number}`,
-              'aria-label': `Editar ${formatPhone(phone.number)}`,
-            },
-            'Editar',
-          ),
-        ),
+        'a',
+        {
+          class: 'chip',
+          href: `#editar/${phone.number}`,
+          'aria-label': `Editar ${formatPhone(phone.number)}`,
+        },
+        'Editar',
       ),
-    ),
-    'Sin resultados.',
-  );
+    ]),
+  }));
+  fillRows(rows, groupedRows(groups, openGroups, query !== ''), 'Sin resultados.');
 }
 
-/** Submits a form, then goes back to the list and re-reads it from the database. */
-async function submitAndReload(form, request) {
-  const submit = form.querySelector('button[type="submit"]');
-  clearFormErrors(form, alertOf(form));
+/**
+ * Changes the owner, then goes back to the list re-read from the database, with the new owner's
+ * group open and a confirmation, so it is clear the change was saved and where the phone went.
+ */
+async function onEdit(event) {
+  event.preventDefault();
+  const submit = editForm.querySelector('button[type="submit"]');
+  const number = editingNumber;
+  const identification = editForm.elements.identification.value;
+  clearFormErrors(editForm, alertOf(editForm));
+
+  const current = phones.find((phone) => phone.number === number);
+  if (identification === current?.ownerIdentification) {
+    return showFormError(editForm, alertOf(editForm), {
+      field: 'identification',
+      message: 'Seleccione un titular distinto del actual.',
+    });
+  }
+
   submit.disabled = true;
   try {
-    await request();
+    await api(`/api/phones/${number}/owner`, { method: 'PUT', body: { identification } });
+    openGroups.add(identification);
     location.hash = '';
     await loadPhones();
+    const moved = phones.find((phone) => phone.number === number);
+    if (moved) {
+      listOk.textContent = `${formatPhone(number)} ahora pertenece a ${compactName(moved.ownerNames, moved.ownerFirstSurname)}.`;
+      listOk.hidden = false;
+    }
   } catch (err) {
-    showFormError(form, alertOf(form), err);
+    showFormError(editForm, alertOf(editForm), err);
   } finally {
     submit.disabled = false;
   }
-}
-
-function onEdit(event) {
-  event.preventDefault();
-  return submitAndReload(editForm, () =>
-    api(`/api/phones/${editingNumber}/owner`, {
-      method: 'PUT',
-      body: { identification: editForm.elements.identification.value },
-    }),
-  );
 }

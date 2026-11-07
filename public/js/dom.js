@@ -79,3 +79,54 @@ export function fillRows(tbody, rows, emptyText) {
     el('tr', {}, el('td', { class: 'table-empty', colspan: columns }, emptyText)),
   );
 }
+
+/**
+ * Table rows grouped by owner, so a person is not repeated on every row. Each group gets a summary
+ * row with a disclosure button; its item rows show only while it is open.
+ * groups: [{ key, label, summary: [cell, …], items: [[cell, …], …] }]. A cell is a node or a string.
+ * open: Set of keys kept between renders. forceOpen: show every group open (while searching).
+ */
+export function groupedRows(groups, open, forceOpen = false) {
+  return groups.flatMap(({ key, label, summary, items }) => {
+    const cells = (values) => values.map((value) => el('td', {}, value));
+    const itemRows = items.map((values) =>
+      el('tr', { class: 'group-item' }, el('td', {}), ...cells(values)),
+    );
+    const button = el('button', { type: 'button', class: 'disclosure' }, label);
+    const summaryRow = el('tr', { class: 'group-row' }, el('td', {}, button), ...cells(summary));
+
+    const show = (expanded) => {
+      button.setAttribute('aria-expanded', String(expanded));
+      for (const row of itemRows) row.hidden = !expanded;
+    };
+    const toggle = () => {
+      const expanded = button.getAttribute('aria-expanded') !== 'true';
+      if (expanded) open.add(key);
+      else open.delete(key);
+      show(expanded);
+    };
+    button.addEventListener('click', toggle);
+    // The whole summary row is clickable; the button keeps it usable with the keyboard.
+    summaryRow.addEventListener('click', (event) => {
+      if (!button.contains(event.target)) toggle();
+    });
+    show(forceOpen || open.has(key));
+    return [summaryRow, ...itemRows];
+  });
+}
+
+/** Groups items by key, keeping the order in which each key first appears. */
+export function groupBy(items, keyOf) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = keyOf(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return [...groups.values()];
+}
+
+/** "1 teléfono" / "2 teléfonos". */
+export function count(n, singular, plural) {
+  return `${n} ${n === 1 ? singular : plural}`;
+}

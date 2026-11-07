@@ -1,5 +1,14 @@
 import { api } from './api.js';
-import { clearFormErrors, el, fillRows, showFormError, tag } from './dom.js';
+import {
+  clearFormErrors,
+  count,
+  el,
+  fillRows,
+  groupBy,
+  groupedRows,
+  showFormError,
+  tag,
+} from './dom.js';
 import { compactName, formatMoney, fullName, searchText, titleCase } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -15,6 +24,7 @@ const formAlert = document.getElementById('form-alert');
 const submit = form.querySelector('button[type="submit"]');
 
 let accounts = [];
+const openGroups = new Set(); // holders unfolded in the list, kept across reloads
 
 const user = await initLayout('accounts', 'ADMIN');
 // defaultValue survives form.reset().
@@ -93,24 +103,27 @@ async function loadFormOptions() {
   }
 }
 
+// One row per holder; their accounts unfold below it. Balances are not added up: currencies differ.
 function renderRows() {
   const query = searchText(search.value.trim());
   const visible = accounts.filter((account) => account.search.includes(query));
-  fillRows(
-    rows,
-    visible.map((account) =>
-      el(
-        'tr',
-        {},
-        el('td', { class: 'mono' }, account.iban),
-        el('td', {}, compactName(account.holderNames, account.holderFirstSurname)),
-        el('td', {}, account.currency),
-        el('td', {}, formatMoney(account.balance, account.currency)),
-        el('td', {}, tag(titleCase(account.status), STATUS_TAGS[account.status])),
-      ),
-    ),
-    'Sin resultados.',
-  );
+  const groups = groupBy(visible, (account) => account.clientId).map((owned) => ({
+    key: owned[0].clientId,
+    label: compactName(owned[0].holderNames, owned[0].holderFirstSurname),
+    summary: [
+      count(owned.length, 'cuenta', 'cuentas'),
+      [...new Set(owned.map((account) => account.currency))].join(' · '),
+      '',
+      '',
+    ],
+    items: owned.map((account) => [
+      el('span', { class: 'mono' }, account.iban),
+      account.currency,
+      formatMoney(account.balance, account.currency),
+      tag(titleCase(account.status), STATUS_TAGS[account.status]),
+    ]),
+  }));
+  fillRows(rows, groupedRows(groups, openGroups, query !== ''), 'Sin resultados.');
 }
 
 async function onSubmit(event) {

@@ -114,7 +114,8 @@ README.md
 - **Afiliar / Cambiar cuenta selects are NOT filtered by business rule** (Cristopher's decision), **only by the session entity**: they list every phone of the entity's clients and every account of the entity, so every error screen (ya afiliado, cuenta no válida, titularidad, Cambiar cuenta · Error) can be reproduced and the database triggers/procedures are the ones that reject invalid combinations.
   - Help texts describe the rule, not a filter: Teléfono "El teléfono no debe tener una afiliación vigente."; Cuenta / Nueva cuenta "Debe ser del mismo titular del teléfono, ACTIVA y en CRC.".
   - Options show their state so a rejection is understandable: phones "80000001 · Leonardo Aguilar · afiliado" (or "no afiliado"), accounts "CR12 …034 · Darlin Chaves · CRC · BLOQUEADA" (owner instead of the bank code, which is always the session entity; Cristopher's decision, Nov 7, 2026). After a successful "Afiliar" the view stays on the form with the green alert (11 Éxito).
-- "Editar teléfono" is reached from an **"Editar" chip in each row** of the Teléfonos table (Cristopher's decision: the Figma table has no entry point). Its view is `#editar/<number>`.
+- "Editar teléfono" is reached from an **"Editar" chip on each phone row** of the Teléfonos table (Cristopher's decision: the Figma table has no entry point). Its view is `#editar/<number>`. After saving, the list shows a green alert ("8000-0005 ahora pertenece a Leonardo Aguilar.", hidden on the next search or edit) with the new owner's group open; choosing the current owner is rejected on the form ("Seleccione un titular distinto del actual.").
+- **Grouped lists** (Cristopher's decision, Nov 7, 2026, so a person is not repeated on every row): Teléfonos, SINPE Móvil and Cuentas IBAN show **one row per owner** with a chevron button (keyboard-usable) and a summary ("2 teléfonos · 2 afiliados", "2 teléfonos · CR12 …001", "1 cuenta · USD"); the owner's items unfold below it with their actions (Editar, Cambiar de cuenta, Desafiliar). "Titular" is the first column; the other columns are the Figma ones. Groups start closed, every owner gets a chevron (even with one item), a search opens every matching group, and open groups stay open after a reload. One helper for the three tables: `groupedRows` / `groupBy` in `public/js/dom.js`. Clientes, Mis teléfonos, Informes and Mis movimientos are not grouped.
 
 ## 5. Security (MANDATORY)
 
@@ -282,9 +283,9 @@ After the `CALL`, on the **same connection**, read the receipt: number, date, am
 |---|---|---|---|
 | 00 Login | `index.html` | public | "Entidad financiera" select above Usuario, BCR selected by default. Hint: "Administrador: admin · Juntaucr2026 · Cliente: leonardo.aguilar · Cliente2026". After login, redirect by role. |
 | A01–A02 Clientes | `clients.html` | ADMIN | Column "Registro" → "Usuario". Form without Estado, with the "Credenciales de acceso" section (Usuario, Contraseña temporal). |
-| A03–A04 Cuentas IBAN | `accounts.html` | ADMIN | No "Entidad" column. In the form the entity is read-only (from the session) and there is no Estado field. |
-| A05 Teléfonos | `phones.html` | ADMIN | Read-only: no "Registrar teléfono" button. Keeps the "Editar" chip per row (change owner). |
-| A06–A09 SINPE Móvil | `sinpe.html` | ADMIN | As before, filtered by entity, with the rules of section 7. |
+| A03–A04 Cuentas IBAN | `accounts.html` | ADMIN | No "Entidad" column. Grouped by holder (section 4). In the form the entity is read-only (from the session) and there is no Estado field. |
+| A05 Teléfonos | `phones.html` | ADMIN | Read-only: no "Registrar teléfono" button. Grouped by owner (section 4); the "Editar" chip (change owner) is on each phone row. |
+| A06–A09 SINPE Móvil | `sinpe.html` | ADMIN | As before, filtered by entity, with the rules of section 7. Grouped by owner (section 4). |
 | A10 Informes | `reports.html` | ADMIN | Only "Afiliaciones de un teléfono" and "Teléfonos asociados a una cuenta". |
 | C01 Inicio | `home.html` | CLIENTE | "Hola, <nombre>", stats (cuentas, teléfonos, afiliados), account cards with balance, last 5 movements, buttons Transferir / Registrar teléfono / Ver todos. |
 | C02–C03 Mis teléfonos | `my-phones.html` | CLIENTE | Table Número · SINPE Móvil · Cuenta afiliada · Registrado. Registrar teléfono form with read-only owner taken from the session. |
@@ -335,7 +336,7 @@ After the `CALL`, on the **same connection**, read the receipt: number, date, am
 - **IBAN:** full or short (`CR00 …001`) **exactly where the Figma uses each one**.
   - Full: the Cuentas IBAN table, account cards, inputs, the Registrar cuenta form.
   - Short: the SINPE table, the Afiliar / Cambiar cuenta account selects, the Informes and Mis movimientos selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
-  - Tail only (`…001`): the "Cuenta afiliada" column of the Teléfonos table; "—" when not enrolled. Mis teléfonos (client) shows "Otra entidad (BN)" for the client's own phones enrolled elsewhere.
+  - The "Cuenta afiliada" column of the Teléfonos table shows the **full** IBAN (Cristopher's decision, Nov 7, 2026: the Figma's `…001` tail did not tell which account it was); "—" when not enrolled. Mis teléfonos (client) shows "Otra entidad (BN)" for the client's own phones enrolled elsewhere.
 - **Dates:** "Fecha de apertura" (Registrar cuenta) and Mis movimientos "Desde"/"Hasta" use the **native `<input type="date">`** (Cristopher's decision). It shows the date in the browser's locale format (e.g. 30/10/2026) instead of the Figma's 2026-11-09; that difference is accepted. The API always sends and receives `YYYY-MM-DD`.
 - **Selects of clients that receive something** (Titular in Registrar cuenta, Nuevo titular in Editar teléfono) list only ACTIVO clients of the session entity; the stored procedure / trigger remains the final validation.
 - **Money:**

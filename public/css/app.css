@@ -1054,3 +1054,61 @@ fieldset.plain .field:first-child {
     margin-top: 10px;
   }
 }
+
+/* ---------- Grouped lists (one row per owner, items unfold below) ---------- */
+.group-row {
+  cursor: pointer;
+}
+
+.group-row td {
+  color: var(--mut);
+}
+
+.disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Chevron drawn with two borders: points right when closed, down when open. */
+.disclosure::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--mut);
+  border-bottom: 2px solid var(--mut);
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+.disclosure[aria-expanded='true']::before {
+  transform: rotate(45deg);
+}
+
+/* Item rows sit inside their group: lighter line and a soft background. */
+.table .group-item td {
+  border-top-color: color-mix(in srgb, var(--line) 50%, var(--surf));
+  background: color-mix(in srgb, var(--bg) 35%, var(--surf));
+}
+
+/* Fixed columns where items have action chips, so unfolding a group does not shift them.
+   Cuentas IBAN has no chips and keeps automatic widths so the full IBAN fits. */
+.table:has(.group-item .chip) {
+  table-layout: fixed;
+  min-width: 640px;
+}
+
+.table:has(.group-item .chip) th:first-child {
+  width: 26%;
+}
+
+/* A full IBAN (22 monospace characters) fits without being cut. */
+.table th.col-iban {
+  width: 220px;
+}

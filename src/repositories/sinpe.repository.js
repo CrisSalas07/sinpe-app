@@ -6,6 +6,7 @@ export async function findAll(entityId) {
     `SELECT
       t.id_telefono AS phoneId,
       t.numero AS number,
+      c.id_cliente AS ownerId,
       c.nombres AS ownerNames,
       c.primer_apellido AS ownerFirstSurname,
       cu.id_cuenta AS accountId,

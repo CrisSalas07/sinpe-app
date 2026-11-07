@@ -1,5 +1,13 @@
 import { api } from './api.js';
-import { clearFormErrors, el, fillRows, showFormError } from './dom.js';
+import {
+  clearFormErrors,
+  count,
+  el,
+  fillRows,
+  groupBy,
+  groupedRows,
+  showFormError,
+} from './dom.js';
 import { compactName, formatPhone, searchText, shortIban } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -17,6 +25,7 @@ const changeForm = document.getElementById('change-form');
 
 let enrollments = [];
 let selected = null; // enrollment shown in the open modal
+const openGroups = new Set(); // owners unfolded in the list, kept across reloads
 const phonesById = new Map();
 const accountsById = new Map();
 
@@ -120,27 +129,37 @@ async function loadOptions() {
   }
 }
 
+function actions(item) {
+  const change = el('button', { type: 'button', class: 'chip' }, 'Cambiar de cuenta');
+  change.addEventListener('click', () => openChange(item));
+  const unenroll = el('button', { type: 'button', class: 'chip' }, 'Desafiliar');
+  unenroll.addEventListener('click', () => openUnenroll(item));
+  return el('div', { class: 'row-actions' }, change, unenroll);
+}
+
+/** The account when all of an owner's phones share it, as usual; otherwise how many. */
+function accountSummary(owned) {
+  const ibans = new Set(owned.map((item) => item.iban));
+  return ibans.size === 1
+    ? el('span', { class: 'mono' }, shortIban(owned[0].iban))
+    : count(ibans.size, 'cuenta', 'cuentas');
+}
+
+// One row per owner; their enrollments (with their actions) unfold below it.
 function renderRows() {
   const query = searchText(search.value.trim());
   const visible = enrollments.filter((item) => item.search.includes(query));
-  fillRows(
-    rows,
-    visible.map((item) => {
-      const change = el('button', { type: 'button', class: 'chip' }, 'Cambiar de cuenta');
-      change.addEventListener('click', () => openChange(item));
-      const unenroll = el('button', { type: 'button', class: 'chip' }, 'Desafiliar');
-      unenroll.addEventListener('click', () => openUnenroll(item));
-      return el(
-        'tr',
-        {},
-        el('td', {}, formatPhone(item.number)),
-        el('td', {}, compactName(item.ownerNames, item.ownerFirstSurname)),
-        el('td', { class: 'mono' }, shortIban(item.iban)),
-        el('td', {}, el('div', { class: 'row-actions' }, change, unenroll)),
-      );
-    }),
-    'Sin resultados.',
-  );
+  const groups = groupBy(visible, (item) => item.ownerId).map((owned) => ({
+    key: owned[0].ownerId,
+    label: compactName(owned[0].ownerNames, owned[0].ownerFirstSurname),
+    summary: [count(owned.length, 'teléfono', 'teléfonos'), accountSummary(owned), ''],
+    items: owned.map((item) => [
+      formatPhone(item.number),
+      el('span', { class: 'mono' }, shortIban(item.iban)),
+      actions(item),
+    ]),
+  }));
+  fillRows(rows, groupedRows(groups, openGroups, query !== ''), 'Sin resultados.');
 }
 
 function phoneSummary(item) {
