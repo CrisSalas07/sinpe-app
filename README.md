@@ -168,13 +168,13 @@ HTTP request
 **Administrador** (menu: Clientes · Cuentas IBAN · Teléfonos · SINPE Móvil · Informes). It does not
 transfer money or see client movements.
 
-| Screen       | What it does                                                         | Database objects                                                                                                                                            |
-| ------------ | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Clientes     | List, stats, search, register with username and temporary password   | `sp_registrar_cliente`, `cliente_entidad`                                                                                                                   |
-| Cuentas IBAN | List, stats, search, register (the entity comes from the session)    | `sp_registrar_cuenta`                                                                                                                                       |
-| Teléfonos    | List, stats, search, change owner. Clients register their own phones | `sp_cambiar_titular_telefono`, `trg_telefono_validar_update`                                                                                                |
-| SINPE Móvil  | Enroll, unenroll, change account                                     | `sp_afiliar_sinpe`, `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe`, `trg_validar_afiliacion`, `trg_historial_afiliacion`, `trg_afiliacion_auditar_delete` |
-| Informes     | Enrollment history of a phone, phones enrolled to an account         | `historial_afiliacion`                                                                                                                                      |
+| Screen       | What it does                                                                           | Database objects                                                                                                                                            |
+| ------------ | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clientes     | List, stats, search, register with username and temporary password                     | `sp_registrar_cliente`, `cliente_entidad`                                                                                                                   |
+| Cuentas IBAN | List, stats, search, register (entity from the session; "Generar" fills the next IBAN) | `sp_registrar_cuenta`                                                                                                                                       |
+| Teléfonos    | List, stats, search, register a phone to a client, change owner                        | `sp_registrar_telefono`, `sp_cambiar_titular_telefono`, `trg_telefono_validar_update`                                                                       |
+| SINPE Móvil  | Enroll, unenroll, change account                                                       | `sp_afiliar_sinpe`, `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe`, `trg_validar_afiliacion`, `trg_historial_afiliacion`, `trg_afiliacion_auditar_delete` |
+| Informes     | Enrollment history of a phone, phones enrolled to an account                           | `historial_afiliacion`                                                                                                                                      |
 
 **Cliente** (menu: Inicio · Mis teléfonos · Transferir · Mis movimientos). It does not enroll phones:
 the administrator does.

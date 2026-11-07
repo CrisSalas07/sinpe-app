@@ -1,5 +1,9 @@
 import * as phonesService from '../services/phones.service.js';
-import { validateOwnerChange, validatePhoneNumber } from '../validators/phones.validator.js';
+import {
+  validateAdminPhone,
+  validateOwnerChange,
+  validatePhoneNumber,
+} from '../validators/phones.validator.js';
 
 export async function list(req, res) {
   res.json(await phonesService.list(req.session.user.entityId));
@@ -11,6 +15,12 @@ export async function options(req, res) {
 
 export async function stats(req, res) {
   res.json(await phonesService.stats(req.session.user.entityId));
+}
+
+export async function create(req, res) {
+  const { clientId, number } = validateAdminPhone(req.body);
+  await phonesService.register(req.session.user.entityId, clientId, number);
+  res.status(201).end();
 }
 
 export async function changeOwner(req, res) {

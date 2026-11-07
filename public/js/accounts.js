@@ -34,6 +34,7 @@ document.getElementById('iban-help').textContent =
 window.addEventListener('hashchange', showView);
 search.addEventListener('input', renderRows);
 form.addEventListener('submit', onSubmit);
+document.getElementById('generate-iban').addEventListener('click', generateIban);
 await Promise.all([loadAccounts(), loadFormOptions()]);
 showView();
 
@@ -150,5 +151,20 @@ async function onSubmit(event) {
     showFormError(form, formAlert, err);
   } finally {
     submit.disabled = false;
+  }
+}
+
+/** Fills the IBAN with the next free one of this entity; the admin may still change it by hand. */
+async function generateIban(event) {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const { iban } = await api('/api/accounts/next-iban');
+    form.elements.iban.value = iban;
+    form.elements.iban.removeAttribute('aria-invalid');
+  } catch (err) {
+    showFormError(form, formAlert, err);
+  } finally {
+    button.disabled = false;
   }
 }

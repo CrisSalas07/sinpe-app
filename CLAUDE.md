@@ -191,7 +191,7 @@ The entity and the client always come from the session.
 |---|---|---|
 | `sp_registrar_cliente` | p_id_entidad, p_identificacion, p_nombres, p_primer_apellido, p_segundo_apellido, p_correo, p_usuario, p_password_hash | No status (ACTIVO by default). Creates the person if new, then adds the `cliente_entidad` row. Errors: "El cliente ya está registrado en esta entidad", username taken, "El correo ya pertenece a otro cliente". If the person already exists (client of another entity), names, surnames and email must match the stored ones, otherwise one generic "Los datos no coinciden con la persona registrada con esa identificación" (never says which field); an INACTIVO person gets "El cliente está inactivo" (Cristopher's decision, Nov 7, 2026). One transaction with rollback. |
 | `sp_registrar_cuenta` | p_id_entidad, p_id_cliente, p_moneda, p_iban, p_saldo, p_fecha_apertura | No status (ACTIVA). "El cliente no pertenece a esta entidad". "El IBAN no corresponde a esta entidad" if `SUBSTRING(iban, 5, 4) <> CONCAT('0', codigo_iban)`. |
-| `sp_registrar_telefono` | p_id_cliente, p_numero | The owner is the session client. Format and duplicate checks stay. |
+| `sp_registrar_telefono` | p_id_entidad, p_id_cliente, p_numero | Used by the client (owner = session client) and the admin (owner chosen). "El cliente no pertenece a esta entidad" if the owner is not a client of the entity. The number is unique system-wide (a line has one owner): "El teléfono ya está registrado a este cliente" when it is already the same person's (registered through another bank), "Este número ya está registrado" for anyone else, without saying who or where. Registering never enrolls. |
 | `sp_cambiar_titular_telefono` | p_id_entidad + current params | Current and new owner must be clients of the entity. The enrolled-phone trigger stays. |
 | `sp_afiliar_sinpe` | p_id_entidad, p_id_telefono, p_id_cuenta | Enrollment rules below. |
 | `sp_desafiliar_sinpe` | p_id_entidad, p_numero | Enrollment rules below. |
@@ -284,7 +284,7 @@ After the `CALL`, on the **same connection**, read the receipt: number, date, am
 | 00 Login | `index.html` | public | "Entidad financiera" select above Usuario, BCR selected by default. Hint: "Administrador: admin · Juntaucr2026 · Cliente: leonardo.aguilar · Cliente2026". After login, redirect by role. |
 | A01–A02 Clientes | `clients.html` | ADMIN | Column "Registro" → "Usuario". Form without Estado, with the "Credenciales de acceso" section (Usuario, Contraseña temporal). |
 | A03–A04 Cuentas IBAN | `accounts.html` | ADMIN | No "Entidad" column. Grouped by holder (section 4). In the form the entity is read-only (from the session) and there is no Estado field. |
-| A05 Teléfonos | `phones.html` | ADMIN | Read-only: no "Registrar teléfono" button. Grouped by owner (section 4); the "Editar" chip (change owner) is on each phone row. |
+| A05 Teléfonos | `phones.html` | ADMIN | "Registrar teléfono" button and view `#registrar` (Titular select of ACTIVO clients + Número celular; Cristopher's decision, Nov 7, 2026, overriding the read-only screen of `CAMBIOS.pdf`); on success the list shows "8000-0095 quedó registrado a Leonardo Aguilar." with the owner's group open. Grouped by owner (section 4); the "Editar" chip (change owner) is on each phone row. |
 | A06–A09 SINPE Móvil | `sinpe.html` | ADMIN | As before, filtered by entity, with the rules of section 7. Grouped by owner (section 4). |
 | A10 Informes | `reports.html` | ADMIN | Only "Afiliaciones de un teléfono" and "Teléfonos asociados a una cuenta". |
 | C01 Inicio | `home.html` | CLIENTE | "Hola, <nombre>", stats (cuentas, teléfonos, afiliados), account cards with balance, last 5 movements, buttons Transferir / Registrar teléfono / Ver todos. |
@@ -349,7 +349,7 @@ After the `CALL`, on the **same connection**, read the receipt: number, date, am
 |---|---|
 | Public | `GET /api/auth/entities` · `POST /api/auth/login` |
 | Any session | `POST /api/auth/logout` · `GET /api/auth/me` |
-| ADMIN | `GET /api/clients` (with account and phone counts) · `GET /api/clients/stats` · `POST /api/clients` · `GET /api/accounts` · `GET /api/accounts/stats` · `POST /api/accounts` · `GET /api/catalogs/currencies` · `GET /api/phones` · `GET /api/phones/options` · `GET /api/phones/stats` · `PUT /api/phones/:number/owner` (**no POST**) · all of `/api/sinpe` (`GET`, `GET /stats`, `POST`, `DELETE /:number`, `PUT /:phoneId/account`) · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
+| ADMIN | `GET /api/clients` (with account and phone counts) · `GET /api/clients/stats` · `POST /api/clients` · `GET /api/accounts` · `GET /api/accounts/stats` · `GET /api/accounts/next-iban` · `POST /api/accounts` · `GET /api/catalogs/currencies` · `GET /api/phones` · `GET /api/phones/options` · `GET /api/phones/stats` · `POST /api/phones` (`{ clientId, number }`) · `PUT /api/phones/:number/owner` · all of `/api/sinpe` (`GET`, `GET /stats`, `POST`, `DELETE /:number`, `PUT /:phoneId/account`) · `GET /api/reports/enrollment-history?number=` · `GET /api/reports/account-phones?iban=` |
 | CLIENTE | `GET /api/me/summary` · `GET /api/me/accounts` · `GET /api/me/recent-movements` (last 5) · `GET /api/me/movements?iban=&from=&to=` · `GET /api/me/phones` · `POST /api/me/phones` · `POST /api/transfers/sinpe` · `POST /api/transfers/iban` · `GET /api/transfers/recipient?number=` or `?iban=` · `GET /api/transfers/limit?iban=` (`limit`, `usedToday`, `available`) |
 
 - Every ADMIN query is filtered by the session entity (`WHERE … id_entidad = ?`). A phone belongs to an entity through its owner (`cliente_entidad`). SINPE "Sin afiliar" counts the phones of the entity's clients not enrolled anywhere; a phone enrolled elsewhere is in neither stat of that screen. The enrollment history only shows events on accounts of the entity.
@@ -368,6 +368,7 @@ After the `CALL`, on the **same connection**, read the receipt: number, date, am
 - Instead of Estado, the note "La cuenta se crea con estado ACTIVA."
 - "Entidad financiera" is read-only. The Titular select lists only ACTIVO clients of the entity.
 - IBAN help: "22 caracteres: CR + 2 dígitos + 0152 (código BCR) + 14 dígitos." (with the session entity's code).
+- A "Generar" button beside the IBAN fills the next one of the entity (Cristopher's decision, Nov 7, 2026): `CR12` (the fixed check digits of the seed data, not real mod-97 ones) + `0` + the entity's IBAN code + the highest account number of that entity + 1, in 14 digits (`GET /api/accounts/next-iban`). The admin can still type one by hand; `sp_registrar_cuenta` validates either way. Two admins generating at once get the same IBAN and the second gets "El IBAN ya está registrado".
 
 **Transfer detail ("Detalle (opcional)"):**
 - `transferencia.detalle VARCHAR(100) NULL` is in `01`. Pass NULL when empty.

@@ -111,18 +111,22 @@
 
           <div class="field">
             <label class="label" for="iban">IBAN</label>
-            <input
-              class="input"
-              id="iban"
-              name="iban"
-              minlength="22"
-              maxlength="22"
-              pattern="CR[0-9]{20}"
-              autocomplete="off"
-              spellcheck="false"
-              required
-              aria-describedby="iban-help iban-error"
-            />
+            <!-- Write it by hand or generate the next one of this entity (Cristopher's decision, Nov 7, 2026). -->
+            <div class="input-action">
+              <input
+                class="input"
+                id="iban"
+                name="iban"
+                minlength="22"
+                maxlength="22"
+                pattern="CR[0-9]{20}"
+                autocomplete="off"
+                spellcheck="false"
+                required
+                aria-describedby="iban-help iban-error"
+              />
+              <button class="btn btn-secondary" type="button" id="generate-iban">Generar</button>
+            </div>
             <p class="help" id="iban-help"></p>
             <p class="field-error" id="iban-error" hidden></p>
           </div>

@@ -66,8 +66,8 @@ export async function getStats(entityId) {
   return rows[0];
 }
 
-export async function create(clientId, number) {
-  await pool.query('CALL sp_registrar_telefono(?, ?)', [clientId, number]);
+export async function create(entityId, clientId, number) {
+  await pool.query('CALL sp_registrar_telefono(?, ?, ?)', [entityId, clientId, number]);
 }
 
 export async function changeOwner(entityId, number, identification) {

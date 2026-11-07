@@ -9,6 +9,10 @@ export async function stats(req, res) {
   res.json(await accountsService.stats(req.session.user.entityId));
 }
 
+export async function nextIban(req, res) {
+  res.json({ iban: await accountsService.nextIban(req.session.user.entityId) });
+}
+
 export async function create(req, res) {
   const account = await accountsService.register(
     req.session.user.entityId,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ValidationError } from '../src/utils/errors.js';
 import {
+  validateAdminPhone,
   validateNewPhone,
   validateOwnerChange,
   validatePhoneNumber,
@@ -41,4 +42,24 @@ test('register and owner change bodies', () => {
     fieldOf(() => validateOwnerChange({})),
     'identification',
   );
+});
+
+test('admin phone: owner id and 8 digits, nothing else', () => {
+  assert.deepEqual(validateAdminPhone({ clientId: 3, number: '80000099' }), {
+    clientId: 3,
+    number: '80000099',
+  });
+  const fieldOf = (body) => {
+    try {
+      validateAdminPhone(body);
+    } catch (err) {
+      assert.ok(err instanceof ValidationError);
+      return err.field;
+    }
+  };
+  assert.equal(fieldOf({ number: '80000099' }), 'clientId');
+  assert.equal(fieldOf({ clientId: '3', number: '80000099' }), 'clientId');
+  assert.equal(fieldOf({ clientId: 3, number: '8000-0099' }), 'number');
+  // The entity always comes from the session, never from the body.
+  assert.equal(fieldOf({ clientId: 3, number: '80000099', entityId: 2 }), 'entityId');
 });

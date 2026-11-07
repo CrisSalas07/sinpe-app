@@ -64,19 +64,38 @@ begin
             coalesce(p_fecha_apertura, curdate()));
 end //
 
--- 2. procedimiento para registrar un telefono (el titular es el cliente de la sesion)
+-- 2. procedimiento para registrar un telefono a un cliente de la entidad
+-- lo usan el cliente (titular = el de la sesion) y el admin (titular elegido en un select); en los dos casos
+-- el titular debe ser cliente de la entidad de la sesion. El numero es unico en todo el sistema porque una
+-- linea tiene un solo dueño: si ya es de esta misma persona (lo registro en otro banco) se dice asi, y si es
+-- de otra persona no se revela de quien ni en que banco. Registrar no afilia a SINPE Movil.
 drop procedure if exists sp_registrar_telefono //
-create procedure sp_registrar_telefono(in p_id_cliente int, in p_numero varchar(8))
+create procedure sp_registrar_telefono(in p_id_entidad int, in p_id_cliente int, in p_numero varchar(8))
 begin
+    declare v_dueno int;
+
     if not exists (select 1 from cliente where id_cliente = p_id_cliente) then
         signal sqlstate '45000' set message_text = 'El cliente no está registrado';
+    end if;
+
+    if not exists (select 1 from cliente_entidad
+                   where id_cliente = p_id_cliente and id_entidad = p_id_entidad) then
+        signal sqlstate '45000' set message_text = 'El cliente no pertenece a esta entidad';
     end if;
 
     if p_numero not regexp '^[0-9]{8}$' then
         signal sqlstate '45000' set message_text = 'El número tiene que ser 8 dígitos';
     end if;
 
-    if exists (select 1 from telefono_cliente where numero = p_numero) then
+    select id_cliente into v_dueno
+    from telefono_cliente
+    where numero = p_numero;
+
+    if v_dueno = p_id_cliente then
+        signal sqlstate '45000' set message_text = 'El teléfono ya está registrado a este cliente';
+    end if;
+
+    if v_dueno is not null then
         signal sqlstate '45000' set message_text = 'Este número ya está registrado';
     end if;
 

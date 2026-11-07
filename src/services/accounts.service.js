@@ -16,6 +16,8 @@ export const list = (entityId) => accountsRepository.findAll(entityId);
 
 export const stats = (entityId) => accountsRepository.getStats(entityId);
 
+export const nextIban = (entityId) => accountsRepository.findNextIban(entityId);
+
 /** Registers through the stored procedure and returns the account as stored in the database. */
 export async function register(entityId, account) {
   try {

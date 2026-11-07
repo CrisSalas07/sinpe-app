@@ -26,4 +26,5 @@ export async function movements({ entityId, clientId }, query) {
 
 export const phones = ({ entityId, clientId }) => meRepository.findPhones(entityId, clientId);
 
-export const registerPhone = ({ clientId }, number) => phonesService.register(clientId, number);
+export const registerPhone = ({ entityId, clientId }, number) =>
+  phonesService.register(entityId, clientId, number);
