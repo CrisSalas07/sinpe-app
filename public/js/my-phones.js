@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { clearFormErrors, el, showFormError, tag } from './dom.js';
+import { clearFormErrors, el, fillRows, showFormError, tag } from './dom.js';
 import { formatPhone, ibanTail } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -44,8 +44,9 @@ function enrolledAccount(phone) {
 async function loadPhones() {
   try {
     const phones = await api('/api/me/phones');
-    rows.replaceChildren(
-      ...phones.map((phone) =>
+    fillRows(
+      rows,
+      phones.map((phone) =>
         el(
           'tr',
           {},
@@ -55,9 +56,11 @@ async function loadPhones() {
           el('td', {}, phone.registeredAt.slice(0, 10)),
         ),
       ),
+      'Sin teléfonos registrados.',
     );
     listAlert.hidden = true;
   } catch (err) {
+    fillRows(rows, [], 'No se pudo cargar.');
     listAlert.textContent = err.message;
     listAlert.hidden = false;
   }

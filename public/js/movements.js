@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { el, tag } from './dom.js';
+import { el, fillRows, tag } from './dom.js';
 import { accountLabel, formatMoney } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -19,6 +19,7 @@ for (const input of [iban, from, to]) input.addEventListener('change', loadMovem
 
 // The report loads as soon as a value changes: the Figma has no "Consultar" button.
 if (await loadAccounts()) await loadMovements();
+else fillRows(rows, [], 'Sin movimientos.');
 
 /** Default period: the current month, in the browser's local time zone. */
 function setCurrentMonth() {
@@ -50,10 +51,6 @@ async function loadAccounts() {
   }
 }
 
-function emptyRow() {
-  return el('tr', {}, el('td', { class: 'table-empty', colspan: 4 }, 'Sin movimientos.'));
-}
-
 function movementRow(row, currency) {
   return el(
     'tr',
@@ -73,16 +70,16 @@ async function loadMovements() {
     const params = new URLSearchParams({ iban: iban.value, from: from.value, to: to.value });
     const result = await api(`/api/me/movements?${params}`);
     if (lookup !== lookups) return;
-    rows.replaceChildren(
-      ...(result.movements.length > 0
-        ? result.movements.map((row) => movementRow(row, currency))
-        : [emptyRow()]),
+    fillRows(
+      rows,
+      result.movements.map((row) => movementRow(row, currency)),
+      'Sin movimientos.',
     );
     $('total-sent').textContent = formatMoney(result.totals.sent, currency);
     $('total-received').textContent = formatMoney(result.totals.received, currency);
   } catch (err) {
     if (lookup !== lookups) return;
-    rows.replaceChildren();
+    fillRows(rows, [], 'No se pudo cargar.');
     $('total-sent').textContent = '';
     $('total-received').textContent = '';
     showError(err);

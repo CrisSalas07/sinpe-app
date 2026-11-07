@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { el, tag } from './dom.js';
+import { el, fillRows, tag } from './dom.js';
 import { accountType, formatMoney, titleCase } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -20,10 +20,9 @@ try {
   $('stat-phones').textContent = summary.phones;
   $('stat-enrolled').textContent = summary.enrolled;
   $('accounts').replaceChildren(...accounts.map(accountCard));
-  $('movement-rows').replaceChildren(
-    ...(movements.length > 0 ? movements.map(movementRow) : [emptyRow()]),
-  );
+  fillRows($('movement-rows'), movements.map(movementRow), 'Sin movimientos.');
 } catch (err) {
+  fillRows($('movement-rows'), [], 'No se pudo cargar.');
   $('page-alert').textContent = err.message;
   $('page-alert').hidden = false;
 }
@@ -53,8 +52,4 @@ function movementRow(row) {
     el('td', {}, row.counterpart),
     el('td', {}, formatMoney(row.amount, row.currency)),
   );
-}
-
-function emptyRow() {
-  return el('tr', {}, el('td', { class: 'table-empty', colspan: 4 }, 'Sin movimientos.'));
 }

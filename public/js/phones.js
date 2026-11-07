@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { clearFormErrors, el, showFormError, tag } from './dom.js';
+import { clearFormErrors, el, fillRows, showFormError, tag } from './dom.js';
 import { compactName, formatPhone, fullName, ibanTail, searchText } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -72,6 +72,7 @@ async function loadPhones() {
     listAlert.hidden = true;
     renderRows();
   } catch (err) {
+    fillRows(rows, [], 'No se pudo cargar.');
     listAlert.textContent = err.message;
     listAlert.hidden = false;
   }
@@ -110,8 +111,9 @@ function enrolledAccount(phone) {
 function renderRows() {
   const query = searchText(search.value.trim());
   const visible = phones.filter((phone) => phone.search.includes(query));
-  rows.replaceChildren(
-    ...visible.map((phone) =>
+  fillRows(
+    rows,
+    visible.map((phone) =>
       el(
         'tr',
         {},
@@ -134,6 +136,7 @@ function renderRows() {
         ),
       ),
     ),
+    'Sin resultados.',
   );
 }
 

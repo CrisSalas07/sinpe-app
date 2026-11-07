@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { clearFormErrors, el, showFormError, tag } from './dom.js';
+import { clearFormErrors, el, fillRows, showFormError, tag } from './dom.js';
 import { compactName, fullName, searchText, titleCase } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -53,6 +53,7 @@ async function loadClients() {
     listAlert.hidden = true;
     renderRows();
   } catch (err) {
+    fillRows(rows, [], 'No se pudo cargar.');
     listAlert.textContent = err.message;
     listAlert.hidden = false;
   }
@@ -61,8 +62,9 @@ async function loadClients() {
 function renderRows() {
   const query = searchText(search.value.trim());
   const visible = clients.filter((client) => client.search.includes(query));
-  rows.replaceChildren(
-    ...visible.map((client) =>
+  fillRows(
+    rows,
+    visible.map((client) =>
       el(
         'tr',
         {},
@@ -75,6 +77,7 @@ function renderRows() {
         el('td', {}, tag(titleCase(client.status), client.status === 'ACTIVO' ? 'ok' : 'neutral')),
       ),
     ),
+    'Sin resultados.',
   );
 }
 

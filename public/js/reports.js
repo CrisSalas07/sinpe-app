@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { el, tag } from './dom.js';
+import { el, fillRows, tag } from './dom.js';
 import { compactName, formatPhone, shortIban } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -51,6 +51,7 @@ async function loadOptions() {
     );
     return true;
   } catch (err) {
+    for (const report of [history, phones]) fillRows(report.rows, [], 'No se pudo cargar.');
     showAlert(history.alert, err);
     return false;
   }
@@ -73,8 +74,9 @@ async function loadHistory() {
       `/api/reports/enrollment-history?${query({ number: history.number.value })}`,
     );
     if (lookup !== history.lookups) return;
-    history.rows.replaceChildren(
-      ...rows.map((row) =>
+    fillRows(
+      history.rows,
+      rows.map((row) =>
         el(
           'tr',
           {},
@@ -83,10 +85,11 @@ async function loadHistory() {
           el('td', { class: 'mono' }, shortIban(row.iban)),
         ),
       ),
+      'Sin eventos en esta entidad.',
     );
   } catch (err) {
     if (lookup !== history.lookups) return;
-    history.rows.replaceChildren();
+    fillRows(history.rows, [], 'No se pudo cargar.');
     showAlert(history.alert, err);
   }
 }
@@ -97,8 +100,9 @@ async function loadPhones() {
   try {
     const rows = await api(`/api/reports/account-phones?${query({ iban: phones.iban.value })}`);
     if (lookup !== phones.lookups) return;
-    phones.rows.replaceChildren(
-      ...rows.map((row) =>
+    fillRows(
+      phones.rows,
+      rows.map((row) =>
         el(
           'tr',
           {},
@@ -107,10 +111,11 @@ async function loadPhones() {
           el('td', { class: 'mono' }, row.enrolledAt.slice(0, 16)),
         ),
       ),
+      'Sin teléfonos afiliados a esta cuenta.',
     );
   } catch (err) {
     if (lookup !== phones.lookups) return;
-    phones.rows.replaceChildren();
+    fillRows(phones.rows, [], 'No se pudo cargar.');
     showAlert(phones.alert, err);
   }
 }

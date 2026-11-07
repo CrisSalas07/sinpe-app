@@ -113,7 +113,7 @@ README.md
 - "Desafiliar" and "Cambiar cuenta" are **modals**.
 - **Afiliar / Cambiar cuenta selects are NOT filtered by business rule** (Cristopher's decision), **only by the session entity**: they list every phone of the entity's clients and every account of the entity, so every error screen (ya afiliado, cuenta no válida, titularidad, Cambiar cuenta · Error) can be reproduced and the database triggers/procedures are the ones that reject invalid combinations.
   - Help texts describe the rule, not a filter: Teléfono "El teléfono no debe tener una afiliación vigente."; Cuenta / Nueva cuenta "Debe ser del mismo titular del teléfono, ACTIVA y en CRC.".
-  - Options show their state so a rejection is understandable: phones "80000001 · Leonardo Aguilar · afiliado" (or "no afiliado"), accounts "CR00 …034 · BN · CRC · BLOQUEADA". After a successful "Afiliar" the view stays on the form with the green alert (11 Éxito).
+  - Options show their state so a rejection is understandable: phones "80000001 · Leonardo Aguilar · afiliado" (or "no afiliado"), accounts "CR12 …034 · Darlin Chaves · CRC · BLOQUEADA" (owner instead of the bank code, which is always the session entity; Cristopher's decision, Nov 7, 2026). After a successful "Afiliar" the view stays on the form with the green alert (11 Éxito).
 - "Editar teléfono" is reached from an **"Editar" chip in each row** of the Teléfonos table (Cristopher's decision: the Figma table has no entry point). Its view is `#editar/<number>`.
 
 ## 5. Security (MANDATORY)

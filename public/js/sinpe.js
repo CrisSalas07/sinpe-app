@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { clearFormErrors, el, showFormError } from './dom.js';
+import { clearFormErrors, el, fillRows, showFormError } from './dom.js';
 import { compactName, formatPhone, searchText, shortIban } from './format.js';
 import { initLayout } from './layout.js';
 
@@ -67,6 +67,7 @@ async function loadEnrollments() {
     listAlert.hidden = true;
     renderRows();
   } catch (err) {
+    fillRows(rows, [], 'No se pudo cargar.');
     listAlert.textContent = err.message;
     listAlert.hidden = false;
   }
@@ -97,12 +98,14 @@ async function loadOptions() {
         ),
       ),
     );
+    // The owner instead of the bank code (always the session entity): the admin can see whose
+    // account it is, while every account stays listed so the database rejections can be shown.
     const accountOptions = () =>
       accounts.map((account) =>
         el(
           'option',
           { value: account.id },
-          `${shortIban(account.iban)} · ${account.bankCode} · ${account.currency} · ${account.status}`,
+          `${shortIban(account.iban)} · ${compactName(account.holderNames, account.holderFirstSurname)} · ${account.currency} · ${account.status}`,
         ),
       );
     enrollForm.elements.accountId.replaceChildren(...accountOptions());
@@ -120,8 +123,9 @@ async function loadOptions() {
 function renderRows() {
   const query = searchText(search.value.trim());
   const visible = enrollments.filter((item) => item.search.includes(query));
-  rows.replaceChildren(
-    ...visible.map((item) => {
+  fillRows(
+    rows,
+    visible.map((item) => {
       const change = el('button', { type: 'button', class: 'chip' }, 'Cambiar de cuenta');
       change.addEventListener('click', () => openChange(item));
       const unenroll = el('button', { type: 'button', class: 'chip' }, 'Desafiliar');
@@ -135,6 +139,7 @@ function renderRows() {
         el('td', {}, el('div', { class: 'row-actions' }, change, unenroll)),
       );
     }),
+    'Sin resultados.',
   );
 }
 

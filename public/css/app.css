@@ -262,7 +262,8 @@ select {
   background: var(--surf);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  overflow: hidden;
+  /* Narrow screens scroll the table sideways instead of cutting columns off. */
+  overflow-x: auto;
 }
 
 .table {
@@ -853,4 +854,203 @@ fieldset.plain .field:first-child {
 
 .report-table th {
   border-bottom: 1px solid var(--line);
+}
+
+/* ---------- Interaction states ---------- */
+.btn,
+.chip,
+.nav a,
+.tab,
+.input,
+.select {
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--acc), #000 15%);
+}
+
+.btn-secondary:not(:disabled):hover {
+  border-color: var(--mut);
+}
+
+.input:not([readonly]):hover,
+.select:hover {
+  border-color: color-mix(in srgb, var(--line), var(--mut) 40%);
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--acc);
+}
+
+/* Read-only fields (entity, owner taken from the session) look different from editable ones. */
+.input[readonly] {
+  background: var(--bg);
+  color: var(--mut);
+}
+
+.table tbody tr:not(:has(.table-empty)):hover td {
+  background: color-mix(in srgb, var(--bg) 50%, var(--surf));
+}
+
+/* A table body stays empty only until its data arrives (fillRows in dom.js). */
+.table:has(tbody:empty)::after {
+  content: 'Cargando…';
+  display: table-caption;
+  caption-side: bottom;
+  padding: 18px 14px;
+  color: var(--mut);
+  text-align: center;
+}
+
+.login-hint span {
+  display: block;
+}
+
+/* ---------- Short screens: the login fits a laptop without scrolling ---------- */
+@media (max-height: 820px) {
+  .login-card {
+    padding: 22px 28px;
+  }
+
+  .login-brand {
+    margin-bottom: 8px;
+  }
+
+  .brand-mark-lg {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 8px;
+  }
+
+  .brand-mark-lg .icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .login-form {
+    margin-top: 12px;
+  }
+
+  .login-form .field {
+    margin-top: 12px;
+  }
+}
+
+/* ---------- Medium screens: the nav moves to its own row ---------- */
+@media (max-width: 1180px) {
+  .app-header {
+    height: auto;
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding-block: 16px;
+  }
+
+  .nav {
+    order: 3;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .entity-pill {
+    max-width: none;
+    white-space: nowrap;
+  }
+}
+
+/* ---------- Narrow screens (tablets, phones) ---------- */
+@media (max-width: 760px) {
+  .header-actions {
+    flex-wrap: wrap;
+    margin-left: 0;
+  }
+
+  .page {
+    margin-top: 20px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 20px;
+  }
+
+  .page-title {
+    font-size: 30px;
+  }
+
+  .stat {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 6px;
+  }
+
+  .section-head {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .input.search {
+    width: 100%;
+  }
+
+  .row-2 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .acct-grid,
+  .acct-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .acct-pair {
+    row-gap: 6px;
+  }
+
+  .acct-pair > .icon {
+    transform: rotate(90deg);
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
+  }
+
+  /* The three steps fit one line on a phone. */
+  .stepper {
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .step + .step::before {
+    width: 12px;
+  }
+}
+
+/* Very short screens (browser with toolbars on a 768 px laptop). */
+@media (max-height: 680px) {
+  .login-wrap {
+    padding-block: 8px;
+  }
+
+  .login-brand {
+    margin-bottom: 4px;
+  }
+
+  .login-form .btn,
+  .login-hint {
+    margin-top: 10px;
+  }
+
+  .check {
+    margin-top: 10px;
+  }
 }

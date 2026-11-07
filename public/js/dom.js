@@ -67,3 +67,15 @@ export function showFormError(form, alertBox, err) {
   if (help) help.hidden = true;
   input.focus();
 }
+
+/**
+ * Puts `rows` in a table body, or one row with `emptyText` across every column when there are none.
+ * While a body is still empty the CSS shows "Cargando…".
+ */
+export function fillRows(tbody, rows, emptyText) {
+  if (rows.length > 0) return tbody.replaceChildren(...rows);
+  const columns = tbody.closest('table').tHead.rows[0].cells.length;
+  tbody.replaceChildren(
+    el('tr', {}, el('td', { class: 'table-empty', colspan: columns }, emptyText)),
+  );
+}
