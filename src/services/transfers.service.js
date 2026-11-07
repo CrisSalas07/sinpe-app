@@ -24,6 +24,8 @@ const SINPE_FIELDS = {
 const IBAN_FIELDS = {
   [ORIGIN_NOT_OWNED]: 'originIban',
   [NO_DESTINATION_ACCOUNT]: 'destinationIban',
+  'Indique la identificación del titular de la cuenta destino': 'destinationIdentification',
+  'La identificación no corresponde al titular de la cuenta destino': 'destinationIdentification',
   'No se puede transferir a la misma cuenta': 'destinationIban',
   'Las cuentas deben tener la misma moneda': 'destinationIban',
   'El monto debe ser positivo': 'amount',
@@ -48,7 +50,6 @@ const toReceipt = ({
   ...row
 }) => ({
   ...row,
-  receipt: `TR-${row.id}`,
   originName: compactName(originNames, originSurname),
   destinationName: compactName(destinationNames, destinationSurname),
 });

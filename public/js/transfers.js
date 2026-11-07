@@ -27,10 +27,12 @@ const ACCOUNT_025 = 'CR12016100000000000025';
 const TEST_CASES = {
   'same-account': { type: 'sinpe', origin: ACCOUNT_001, destination: '70000001', amount: '1000' },
   allowed: { type: 'sinpe', origin: ACCOUNT_001, destination: '80000002', amount: '15000' },
+  // 025 is in the BP, so the beneficiary's id is needed too; it is Leonardo's own account.
   'other-currency': {
     type: 'iban',
     origin: ACCOUNT_001,
     destination: ACCOUNT_025,
+    destinationId: 'UCR000001',
     amount: '15000',
   },
   insufficient: { type: 'sinpe', origin: ACCOUNT_001, destination: '80000002', amount: '150000' },
@@ -45,6 +47,7 @@ const confirmButton = document.getElementById('confirm');
 const backButton = document.getElementById('back');
 const loadAlert = document.getElementById('load-alert');
 const limitHelp = document.getElementById('amount-help');
+const destinationIdField = document.getElementById('destination-id-field');
 
 let type = 'sinpe';
 let accounts = [];
@@ -148,6 +151,7 @@ function applyTestCase(testCase) {
   setType(testCase.type);
   fields.originIban.value = testCase.origin;
   destinationField().value = testCase.destination;
+  fields.destinationIdentification.value = testCase.destinationId ?? '';
   fields.amount.value = testCase.amount;
   setStep(1);
   renderOrigin();
@@ -234,7 +238,17 @@ function isComplete(value) {
   return (type === 'sinpe' ? PHONE_PATTERN : IBAN_PATTERN).test(value);
 }
 
+/** SINPE asks for the beneficiary's identification when the IBAN is of another entity. */
+function needsDestinationId() {
+  return type === 'iban' && recipient !== null && recipient.entity !== user.entityCode;
+}
+
+function destinationId() {
+  return needsDestinationId() ? fields.destinationIdentification.value.trim().toUpperCase() : '';
+}
+
 function renderDestination() {
+  destinationIdField.hidden = !needsDestinationId();
   const card = document.getElementById('card-to');
   const input = destinationField();
   const help = input.closest('.field').querySelector('.help');
@@ -295,6 +309,12 @@ function formatError() {
   if (type === 'iban' && !IBAN_PATTERN.test(destinationValue())) {
     return { field: 'destinationIban', message: 'El IBAN debe ser CR seguido de 20 dígitos.' };
   }
+  if (needsDestinationId() && destinationId() === '') {
+    return {
+      field: 'destinationIdentification',
+      message: 'Indique la identificación del titular de la cuenta destino.',
+    };
+  }
   const amount = fields.amount.value.trim();
   if (!MONEY_PATTERN.test(amount)) {
     return { field: 'amount', message: 'Ingrese un monto válido, con hasta 2 decimales.' };
@@ -327,6 +347,7 @@ function onReview(event) {
   document.getElementById('review-rows').replaceChildren(
     kvRow('Cuenta de origen', accountLabel(origin.iban, origin.currency)),
     kvRow('Destino', destinationText()),
+    ...idRow(destinationId()),
     kvRow('Monto', formatMoney(amount, origin.currency)),
     // Only when the user wrote one, so an empty detail looks exactly like the Figma.
     ...detailRow(fields.detail.value.trim()),
@@ -342,6 +363,11 @@ function onReview(event) {
 
 function kvRow(label, value) {
   return el('div', { class: 'kv-row' }, el('dt', {}, label), el('dd', {}, value));
+}
+
+/** The beneficiary's identification, only between entities (IBAN). */
+function idRow(id) {
+  return id ? [kvRow('Identificación del destinatario', id)] : [];
 }
 
 /** [] when there is no detail, so it can be spread into a list of rows. */
@@ -370,16 +396,21 @@ async function onConfirm() {
           })
         : await api('/api/transfers/iban', {
             method: 'POST',
-            body: { ...common, destinationIban: destinationValue() },
+            body: {
+              ...common,
+              destinationIban: destinationValue(),
+              destinationIdentification: destinationId(),
+            },
           });
     await loadAccounts(); // the select and the card show the balances stored after the transfer
     fillOriginSelect();
     renderOrigin();
-    showReceipt(result);
+    showReceipt(result, destinationId());
     setStep(3);
   } catch (err) {
     // Rejected by the database: back to Datos with its message (07 error screens).
     setStep(1);
+    if (err.field === 'destinationIdentification') destinationIdField.hidden = false;
     showFormError(form, formAlert, err);
   } finally {
     confirmButton.disabled = false;
@@ -387,7 +418,7 @@ async function onConfirm() {
   }
 }
 
-function showReceipt(result) {
+function showReceipt(result, sentId) {
   const money = (value) => formatMoney(value, result.currency);
   const isSinpe = result.destinationNumber !== null;
   const destination = isSinpe
@@ -405,6 +436,7 @@ function showReceipt(result) {
         `${result.originName} · ${shortIban(result.originIban)} (${result.originEntity})`,
       ),
       kvRow('Destino', `${result.destinationName} · ${destination} (${result.destinationEntity})`),
+      ...idRow(isSinpe ? '' : sentId),
       ...detailRow(result.detail),
       kvRow('Comisión', money('0')),
     );

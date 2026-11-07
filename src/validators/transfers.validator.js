@@ -24,14 +24,29 @@ export function validateSinpeTransfer(body) {
   };
 }
 
-/** Transfer by IBAN: origin and destination IBANs, amount (string) and optional detail. */
+/**
+ * Transfer by IBAN: origin and destination IBANs, amount (string), optional detail and the
+ * beneficiary's identification (the procedure requires it when the destination is another entity).
+ */
 export function validateIbanTransfer(body) {
-  assertOnlyFields(body, ['originIban', 'destinationIban', 'amount', 'detail']);
+  assertOnlyFields(body, [
+    'originIban',
+    'destinationIban',
+    'amount',
+    'detail',
+    'destinationIdentification',
+  ]);
   return {
     originIban: requireIban(body, 'originIban', 'La cuenta de origen'),
     destinationIban: requireIban(body, 'destinationIban', 'El IBAN de destino'),
     amount: requireMoney(body, 'amount', 'El monto'),
     detail: optionalString(body, 'detail', DETAIL_MAX, 'El detalle'),
+    destinationIdentification: optionalString(
+      body,
+      'destinationIdentification',
+      20,
+      'La identificación del destinatario',
+    ),
   };
 }
 

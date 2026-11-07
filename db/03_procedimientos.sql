@@ -399,18 +399,23 @@ begin
 end //
 
 -- 7. procedimiento para transferir por iban: de una cuenta propia a cualquier cuenta
+-- como en SINPE (transferencia a terceros), si la cuenta destino es de otra entidad se exige la
+-- identificacion de su titular y debe coincidir; entre cuentas de la misma entidad no se pide.
 drop procedure if exists sp_transferir_iban //
 create procedure sp_transferir_iban(
-    in p_id_entidad   int,
-    in p_id_cliente   int,
-    in p_iban_origen  varchar(30),
-    in p_iban_destino varchar(30),
-    in p_monto        decimal(15,2),
-    in p_detalle      varchar(100)
+    in p_id_entidad              int,
+    in p_id_cliente              int,
+    in p_iban_origen             varchar(30),
+    in p_iban_destino            varchar(30),
+    in p_monto                   decimal(15,2),
+    in p_detalle                 varchar(100),
+    in p_identificacion_destino  varchar(20)
 )
 begin
     declare v_id_origen      int;
     declare v_id_destino     int;
+    declare v_entidad_destino int;
+    declare v_dueno_destino  int;
     declare v_saldo_origen   decimal(15,2);
     declare v_estado_origen  varchar(10);
     declare v_estado_destino varchar(10);
@@ -435,14 +440,26 @@ begin
             signal sqlstate '45000' set message_text = 'La cuenta de origen no pertenece al cliente';
         end if;
 
-        select id_cuenta, estado, moneda
-        into v_id_destino, v_estado_destino, v_moneda_destino
+        select id_cuenta, estado, moneda, id_entidad, id_cliente
+        into v_id_destino, v_estado_destino, v_moneda_destino, v_entidad_destino, v_dueno_destino
         from cuenta_iban
         where iban = p_iban_destino
         for update;
 
         if v_id_destino is null then
             signal sqlstate '45000' set message_text = 'La cuenta destino no existe';
+        end if;
+
+        if v_entidad_destino <> p_id_entidad then
+            if p_identificacion_destino is null or trim(p_identificacion_destino) = '' then
+                signal sqlstate '45000' set message_text = 'Indique la identificación del titular de la cuenta destino';
+            end if;
+
+            if not exists (select 1 from cliente
+                           where id_cliente = v_dueno_destino
+                             and identificacion = trim(p_identificacion_destino)) then
+                signal sqlstate '45000' set message_text = 'La identificación no corresponde al titular de la cuenta destino';
+            end if;
         end if;
 
         if v_id_origen = v_id_destino then
