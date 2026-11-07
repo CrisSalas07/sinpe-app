@@ -19,6 +19,7 @@ const formView = document.getElementById('form-view');
 const rows = document.getElementById('rows');
 const search = document.getElementById('search');
 const listAlert = document.getElementById('list-alert');
+const listOk = document.getElementById('list-ok');
 const form = document.getElementById('account-form');
 const formAlert = document.getElementById('form-alert');
 const submit = form.querySelector('button[type="submit"]');
@@ -32,7 +33,10 @@ document.getElementById('entity').defaultValue = `${user.entityName} (${user.ent
 document.getElementById('iban-help').textContent =
   `22 caracteres: CR + 2 dígitos + 0${user.entityIbanCode} (código ${user.entityCode}) + 14 dígitos.`;
 window.addEventListener('hashchange', showView);
-search.addEventListener('input', renderRows);
+search.addEventListener('input', () => {
+  listOk.hidden = true; // it is about the last save, not about what is now listed
+  renderRows();
+});
 form.addEventListener('submit', onSubmit);
 document.getElementById('generate-iban').addEventListener('click', generateIban);
 await Promise.all([loadAccounts(), loadFormOptions()]);
@@ -44,6 +48,7 @@ function showView() {
   listView.hidden = showForm;
   formView.hidden = !showForm;
   if (showForm) {
+    listOk.hidden = true;
     form.reset();
     // Swedish locale formats dates as YYYY-MM-DD, in the browser's local time zone.
     form.elements.openedAt.value = new Date().toLocaleDateString('sv-SE');
@@ -134,7 +139,7 @@ async function onSubmit(event) {
 
   const fields = form.elements;
   try {
-    await api('/api/accounts', {
+    const account = await api('/api/accounts', {
       method: 'POST',
       body: {
         clientId: Number(fields.clientId.value),
@@ -146,7 +151,10 @@ async function onSubmit(event) {
     });
     // Back to the list, re-read from the database.
     location.hash = '';
+    openGroups.add(account.clientId);
     await loadAccounts();
+    listOk.textContent = `Se registró la cuenta ${account.iban} de ${compactName(account.holderNames, account.holderFirstSurname)}.`;
+    listOk.hidden = false;
   } catch (err) {
     showFormError(form, formAlert, err);
   } finally {

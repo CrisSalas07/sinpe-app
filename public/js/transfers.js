@@ -184,8 +184,17 @@ function renderOrigin() {
   document.getElementById('amount-currency').textContent = CURRENCY_SYMBOLS[currency];
   document.getElementById('balance-help').textContent = origin
     ? `Saldo disponible: ${formatMoney(origin.balance, currency)}`
-    : '';
+    : noOriginMessage();
   loadLimit(origin);
+}
+
+/** Why the origin select is empty: no accounts at all, or none in colones for SINPE Móvil. */
+function noOriginMessage() {
+  if (accounts.length === 0) return 'No tiene cuentas en esta entidad.';
+  if (type === 'sinpe') {
+    return 'No tiene cuentas en colones: SINPE Móvil solo funciona en colones. Use "Por IBAN".';
+  }
+  return 'Seleccione la cuenta de origen.';
 }
 
 function renderEmptyCard(card, label) {
@@ -308,7 +317,7 @@ function onReview(event) {
   if (!origin) {
     return showFormError(form, formAlert, {
       field: 'originIban',
-      message: 'Seleccione la cuenta de origen.',
+      message: noOriginMessage(),
     });
   }
   const error = formatError();

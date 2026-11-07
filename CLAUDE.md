@@ -269,7 +269,9 @@ Read `db/01_esquema_y_datos.sql` before writing any query.
 After the `CALL`, on the **same connection**, read the receipt: number, date, amount, type, detail, origin (compact name, IBAN, entity code) and destination (compact name, entity code, and the phone or the IBAN). **No balances.** In a SINPE Móvil transfer the destination IBAN is not returned, only the phone.
 
 ### Stored procedure messages
-`SIGNAL` messages carry accents (e.g. "La cuenta no está activa") and are shown as is. The service maps that link a message to a form field must use the exact accented text.
+`SIGNAL` messages carry accents (e.g. "La cuenta no está activa") and are shown as is. The service maps that link a message to a form field must use the exact accented text. One exception: in Mis teléfonos the client sees "Ese número ya está registrado a su nombre." instead of "El teléfono ya está registrado a este cliente" (`me.service.js`), because the client is the one registering.
+
+**Confirmations:** after a successful save, the list views of Clientes, Cuentas IBAN, Teléfonos and Mis teléfonos show a green alert above the table ("Se registró a Ana De La Cruz con el usuario ana.cruz.", "Se registró la cuenta CR12… de Ana De La Cruz.", "Se registró el teléfono 8000-0090."), hidden on the next search or form. Afiliar keeps its own (11 Éxito).
 
 ## 8. Design (Figma)
 
@@ -336,7 +338,7 @@ After the `CALL`, on the **same connection**, read the receipt: number, date, am
 - **IBAN:** full or short (`CR00 …001`) **exactly where the Figma uses each one**.
   - Full: the Cuentas IBAN table, account cards, inputs, the Registrar cuenta form.
   - Short: the SINPE table, the Afiliar / Cambiar cuenta account selects, the Informes and Mis movimientos selects and tables, row summaries such as "8000-0001 · Leonardo Aguilar · CR00 …001".
-  - The "Cuenta afiliada" column of the Teléfonos table shows the **full** IBAN (Cristopher's decision, Nov 7, 2026: the Figma's `…001` tail did not tell which account it was); "—" when not enrolled. Mis teléfonos (client) shows "Otra entidad (BN)" for the client's own phones enrolled elsewhere.
+  - The "Cuenta afiliada" column of the Teléfonos table shows the **full** IBAN (Cristopher's decision, Nov 7, 2026: the Figma's `…001` tail did not tell which account it was); "—" when not enrolled. Mis teléfonos (client) shows the full IBAN too, and "Otra entidad (BN)" for the client's own phones enrolled elsewhere.
 - **Dates:** "Fecha de apertura" (Registrar cuenta) and Mis movimientos "Desde"/"Hasta" use the **native `<input type="date">`** (Cristopher's decision). It shows the date in the browser's locale format (e.g. 30/10/2026) instead of the Figma's 2026-11-09; that difference is accepted. The API always sends and receives `YYYY-MM-DD`.
 - **Selects of clients that receive something** (Titular in Registrar cuenta, Nuevo titular in Editar teléfono) list only ACTIVO clients of the session entity; the stored procedure / trigger remains the final validation.
 - **Money:**

@@ -1,12 +1,13 @@
 import { api } from './api.js';
 import { clearFormErrors, el, fillRows, showFormError, tag } from './dom.js';
-import { formatPhone, ibanTail } from './format.js';
+import { formatPhone } from './format.js';
 import { initLayout } from './layout.js';
 
 const listView = document.getElementById('list-view');
 const formView = document.getElementById('form-view');
 const rows = document.getElementById('rows');
 const listAlert = document.getElementById('list-alert');
+const listOk = document.getElementById('list-ok');
 const form = document.getElementById('phone-form');
 const formAlert = form.querySelector('.alert');
 const submit = form.querySelector('button[type="submit"]');
@@ -29,6 +30,7 @@ function showView() {
   listView.hidden = showForm;
   formView.hidden = !showForm;
   if (showForm) {
+    listOk.hidden = true;
     form.reset();
     clearFormErrors(form, formAlert);
     form.elements.number.focus();
@@ -37,7 +39,7 @@ function showView() {
 
 // The IBAN of an enrollment in another entity is not data of this one.
 function enrolledAccount(phone) {
-  if (phone.enrolledIban) return ibanTail(phone.enrolledIban);
+  if (phone.enrolledIban) return phone.enrolledIban; // full IBAN, as in Teléfonos
   return phone.enrolled ? `Otra entidad (${phone.enrolledBankCode})` : '—';
 }
 
@@ -73,8 +75,11 @@ async function onSubmit(event) {
   try {
     await api('/api/me/phones', { method: 'POST', body: { number: form.elements.number.value } });
     // Back to the list, re-read from the database.
+    const number = form.elements.number.value;
     location.hash = '';
     await loadPhones();
+    listOk.textContent = `Se registró el teléfono ${formatPhone(number)}.`;
+    listOk.hidden = false;
   } catch (err) {
     showFormError(form, formAlert, err);
   } finally {

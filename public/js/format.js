@@ -49,11 +49,6 @@ export function searchText(...parts) {
     .toLowerCase();
 }
 
-/** Last 3 digits only, as in the Teléfonos table: "CR12015200000000000001" → "…001". */
-export function ibanTail(iban) {
-  return `…${iban.slice(-3)}`;
-}
-
 /** "123991.5" → 12399150. Integer cents, so money math never uses floats. */
 export function toCents(amount) {
   const [int, dec = ''] = String(amount).split('.');
