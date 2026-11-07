@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ValidationError } from '../src/utils/errors.js';
-import { validateNewAccount } from '../src/validators/accounts.validator.js';
+import { validateNewAccount, validateStatusChange } from '../src/validators/accounts.validator.js';
 import { requireDate, requireMoney } from '../src/validators/common.js';
 
 const valid = {
@@ -61,4 +61,25 @@ test('dates must exist in the calendar', () => {
       'd',
     );
   }
+});
+
+test('status change: an IBAN in the path and one of the three states', () => {
+  const iban = 'CR12015200000000000005';
+  assert.deepEqual(validateStatusChange(iban, { status: 'BLOQUEADA' }), {
+    iban,
+    status: 'BLOQUEADA',
+  });
+  const fieldOf = (param, body) => {
+    try {
+      validateStatusChange(param, body);
+    } catch (err) {
+      assert.ok(err instanceof ValidationError);
+      return err.field;
+    }
+  };
+  assert.equal(fieldOf(iban, { status: 'CERRADA' }), 'status');
+  assert.equal(fieldOf(iban, { status: 'activa' }), 'status');
+  assert.equal(fieldOf('CR12', { status: 'ACTIVA' }), 'iban');
+  // The entity always comes from the session.
+  assert.equal(fieldOf(iban, { status: 'ACTIVA', entityId: 2 }), 'entityId');
 });

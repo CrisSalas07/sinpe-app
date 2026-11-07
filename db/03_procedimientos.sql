@@ -657,6 +657,57 @@ begin
     update telefono_cliente set id_cliente = v_id_cliente where numero = p_numero;
 end //
 
+
+-- 11. procedimiento para cambiar el estado de una cuenta (lo hace el administrador de su entidad)
+-- una cuenta que no esta ACTIVA no envia ni recibe transferencias y no se puede afiliar; sus
+-- afiliaciones SINPE se conservan (los envios a ese numero fallan hasta que vuelva a estar ACTIVA).
+-- como al cerrar una cuenta real, pasar a INACTIVA exige saldo cero; BLOQUEADA no, es temporal.
+drop procedure if exists sp_cambiar_estado_cuenta //
+create procedure sp_cambiar_estado_cuenta(
+    in p_id_entidad int,
+    in p_iban       varchar(30),
+    in p_estado     varchar(10)
+)
+begin
+    declare v_id_cuenta int;
+    declare v_estado    varchar(10);
+    declare v_saldo     decimal(15,2);
+
+    declare exit handler for sqlexception
+    begin
+        rollback;
+        resignal;
+    end;
+
+    if p_estado is null or p_estado not in ('ACTIVA', 'INACTIVA', 'BLOQUEADA') then
+        signal sqlstate '45000' set message_text = 'El estado no es válido';
+    end if;
+
+    start transaction;
+
+    -- se bloquea la cuenta para que una transferencia no cambie el saldo mientras se revisa
+    select id_cuenta, estado, saldo into v_id_cuenta, v_estado, v_saldo
+    from cuenta_iban
+    where iban = p_iban and id_entidad = p_id_entidad
+    for update;
+
+    if v_id_cuenta is null then
+        signal sqlstate '45000' set message_text = 'La cuenta no pertenece a esta entidad';
+    end if;
+
+    if v_estado = p_estado then
+        signal sqlstate '45000' set message_text = 'La cuenta ya está en ese estado';
+    end if;
+
+    if p_estado = 'INACTIVA' and v_saldo <> 0 then
+        signal sqlstate '45000' set message_text = 'La cuenta debe tener saldo cero para inactivarse';
+    end if;
+
+    update cuenta_iban set estado = p_estado where id_cuenta = v_id_cuenta;
+
+    commit;
+end //
+
 DELIMITER ;
 
 -- usuario de la aplicacion con minimo privilegio: solo lee y ejecuta procedimientos.

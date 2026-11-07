@@ -1,5 +1,5 @@
 import * as accountsService from '../services/accounts.service.js';
-import { validateNewAccount } from '../validators/accounts.validator.js';
+import { validateNewAccount, validateStatusChange } from '../validators/accounts.validator.js';
 
 export async function list(req, res) {
   res.json(await accountsService.list(req.session.user.entityId));
@@ -19,4 +19,9 @@ export async function create(req, res) {
     validateNewAccount(req.body),
   );
   res.status(201).json(account);
+}
+
+export async function changeStatus(req, res) {
+  const { iban, status } = validateStatusChange(req.params.iban, req.body);
+  res.json(await accountsService.changeStatus(req.session.user.entityId, iban, status));
 }

@@ -9,7 +9,7 @@ import {
   showFormError,
   tag,
 } from './dom.js';
-import { compactName, formatMoney, fullName, searchText, titleCase } from './format.js';
+import { compactName, formatMoney, fullName, searchText, shortIban, titleCase } from './format.js';
 import { initLayout } from './layout.js';
 
 const STATUS_TAGS = { ACTIVA: 'ok', INACTIVA: 'neutral', BLOQUEADA: 'bad' };
@@ -23,6 +23,9 @@ const listOk = document.getElementById('list-ok');
 const form = document.getElementById('account-form');
 const formAlert = document.getElementById('form-alert');
 const submit = form.querySelector('button[type="submit"]');
+const statusDialog = document.getElementById('status-dialog');
+const statusForm = document.getElementById('status-form');
+let statusAccount = null; // account shown in the "Cambiar estado" modal
 
 let accounts = [];
 const openGroups = new Set(); // holders unfolded in the list, kept across reloads
@@ -39,6 +42,8 @@ search.addEventListener('input', () => {
 });
 form.addEventListener('submit', onSubmit);
 document.getElementById('generate-iban').addEventListener('click', generateIban);
+statusForm.addEventListener('submit', onChangeStatus);
+statusDialog.querySelector('[data-close]').addEventListener('click', () => statusDialog.close());
 await Promise.all([loadAccounts(), loadFormOptions()]);
 showView();
 
@@ -121,12 +126,14 @@ function renderRows() {
       [...new Set(owned.map((account) => account.currency))].join(' · '),
       '',
       '',
+      '',
     ],
     items: owned.map((account) => [
       el('span', { class: 'mono' }, account.iban),
       account.currency,
       formatMoney(account.balance, account.currency),
       tag(titleCase(account.status), STATUS_TAGS[account.status]),
+      statusChip(account),
     ]),
   }));
   fillRows(rows, groupedRows(groups, openGroups, query !== ''), 'Sin resultados.');
@@ -172,6 +179,61 @@ async function generateIban(event) {
     form.elements.iban.removeAttribute('aria-invalid');
   } catch (err) {
     showFormError(form, formAlert, err);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// ---------- "Cambiar estado" (modal) ----------
+
+function statusChip(account) {
+  const chip = el(
+    'button',
+    { type: 'button', class: 'chip', 'aria-label': `Cambiar estado de ${account.iban}` },
+    'Cambiar estado',
+  );
+  chip.addEventListener('click', () => openStatus(account));
+  return chip;
+}
+
+function openStatus(account) {
+  statusAccount = account;
+  statusForm.reset();
+  clearFormErrors(statusForm, statusForm.querySelector('.alert'));
+  document.getElementById('status-title').textContent =
+    `Cambiar estado de ${shortIban(account.iban)}`;
+  const values = {
+    holder: compactName(account.holderNames, account.holderFirstSurname),
+    balance: formatMoney(account.balance, account.currency),
+    status: account.status,
+  };
+  for (const [key, value] of Object.entries(values)) {
+    statusDialog.querySelector(`[data-value="${key}"]`).textContent = value;
+  }
+  // Start on another state, since choosing the current one is rejected.
+  statusForm.elements.status.value = account.status === 'ACTIVA' ? 'BLOQUEADA' : 'ACTIVA';
+  statusDialog.showModal();
+}
+
+/** The procedure checks the entity, that the state changes and the zero balance for INACTIVA. */
+async function onChangeStatus(event) {
+  event.preventDefault();
+  const button = statusForm.querySelector('button[type="submit"]');
+  const alertBox = statusForm.querySelector('.alert');
+  clearFormErrors(statusForm, alertBox);
+  button.disabled = true;
+  try {
+    const account = await api(`/api/accounts/${statusAccount.iban}/status`, {
+      method: 'PUT',
+      body: { status: statusForm.elements.status.value },
+    });
+    statusDialog.close();
+    openGroups.add(account.clientId);
+    await loadAccounts();
+    listOk.textContent = `La cuenta ${account.iban} quedó ${account.status}.`;
+    listOk.hidden = false;
+  } catch (err) {
+    showFormError(statusForm, alertBox, err);
   } finally {
     button.disabled = false;
   }

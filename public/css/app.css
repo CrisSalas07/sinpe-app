@@ -1123,3 +1123,12 @@ fieldset.plain .field:first-child {
   flex: 1;
   min-width: 0;
 }
+
+/* Short values (currency) and the action chip column of grouped tables. */
+.table th.col-narrow {
+  width: 90px;
+}
+
+.table th.col-actions {
+  width: 150px;
+}

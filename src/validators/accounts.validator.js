@@ -21,3 +21,17 @@ export function validateNewAccount(body) {
   }
   return account;
 }
+
+export const ACCOUNT_STATUSES = ['ACTIVA', 'INACTIVA', 'BLOQUEADA'];
+
+/** "Cambiar estado": the IBAN in the path and the new status in the body. */
+export function validateStatusChange(ibanParam, body) {
+  assertOnlyFields(body, ['status']);
+  if (typeof ibanParam !== 'string' || !IBAN_PATTERN.test(ibanParam)) {
+    throw new ValidationError('La cuenta no es válida', 'iban');
+  }
+  if (!ACCOUNT_STATUSES.includes(body.status)) {
+    throw new ValidationError('Seleccione un estado válido', 'status');
+  }
+  return { iban: ibanParam, status: body.status };
+}

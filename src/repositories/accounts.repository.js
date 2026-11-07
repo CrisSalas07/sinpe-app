@@ -72,3 +72,7 @@ export async function findNextIban(entityId) {
   );
   return rows[0]?.iban ?? null;
 }
+
+export async function changeStatus(entityId, iban, status) {
+  await pool.query('CALL sp_cambiar_estado_cuenta(?, ?, ?)', [entityId, iban, status]);
+}

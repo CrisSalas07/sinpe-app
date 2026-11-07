@@ -104,6 +104,7 @@ afiliado, impiden registrar teléfonos a clientes inactivos y escriben el histor
 | ----------------------------- | --------------------------------------------------------------------- |
 | `sp_registrar_cliente`        | Registrar un cliente en una entidad, con usuario y contraseña         |
 | `sp_registrar_cuenta`         | Abrir una cuenta IBAN (el IBAN debe ser del banco de la sesión)       |
+| `sp_cambiar_estado_cuenta`    | Cambiar el estado de una cuenta (ACTIVA, INACTIVA, BLOQUEADA)         |
 | `sp_registrar_telefono`       | Registrar un teléfono a un cliente de la entidad                      |
 | `sp_cambiar_titular_telefono` | Cambiar el dueño de un teléfono (no si está afiliado)                 |
 | `sp_afiliar_sinpe`            | Afiliar un teléfono a una cuenta                                      |
@@ -244,6 +245,10 @@ estadísticas arriba y un buscador.
 - **Registrar cuenta:** titular (clientes activos), moneda, **IBAN**, saldo inicial y fecha de
   apertura. El botón **Generar** llena el siguiente IBAN libre del banco; también se puede escribir
   a mano. La entidad no se elige: es la de la sesión. La cuenta se crea ACTIVA.
+- **Cambiar estado** (en cada cuenta, al desplegar al titular): ACTIVA, INACTIVA o BLOQUEADA. Una
+  cuenta que no está ACTIVA **no envía ni recibe** transferencias y no se puede afiliar, pero sus
+  afiliaciones a SINPE Móvil **se conservan** (los envíos a ese número fallan hasta reactivarla).
+  Para pasar a INACTIVA el saldo debe ser cero; BLOQUEADA no lo exige.
 
 **Teléfonos**
 
@@ -324,15 +329,16 @@ Se actualiza al cambiar cualquier filtro.
 
 **Transferencias**
 
-| Regla                                                                                         | Dónde                                        |
-| --------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| La cuenta de origen es del cliente y del banco de la sesión, y está ACTIVA                    | `sp_transferir_sinpe`, `sp_transferir_iban`  |
-| SINPE Móvil: solo en colones; el número de destino debe estar registrado y afiliado           | `sp_transferir_sinpe`                        |
-| SINPE Móvil: límite diario por cuenta (₡200 000 en los datos de prueba)                       | `entidad_financiera.limite_diario_sinpe`     |
-| IBAN: el destino existe, está ACTIVO y es de la misma moneda                                  | `sp_transferir_iban`                         |
-| IBAN entre bancos distintos: la identificación del destinatario debe ser la del titular       | `sp_transferir_iban`                         |
-| No a la misma cuenta, monto mayor que cero, saldo suficiente                                  | Procedimientos + `trg_transferencia_validar` |
-| Débito, crédito y registro en una sola transacción, con las cuentas bloqueadas (`FOR UPDATE`) | `sp_transferir_*`                            |
+| Regla                                                                                         | Dónde                                         |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| La cuenta de origen es del cliente y del banco de la sesión, y está ACTIVA                    | `sp_transferir_sinpe`, `sp_transferir_iban`   |
+| SINPE Móvil: solo en colones; el número de destino debe estar registrado y afiliado           | `sp_transferir_sinpe`                         |
+| SINPE Móvil: límite diario por cuenta (₡200 000 en los datos de prueba)                       | `entidad_financiera.limite_diario_sinpe`      |
+| IBAN: el destino existe, está ACTIVO y es de la misma moneda                                  | `sp_transferir_iban`                          |
+| IBAN entre bancos distintos: la identificación del destinatario debe ser la del titular       | `sp_transferir_iban`                          |
+| No a la misma cuenta, monto mayor que cero, saldo suficiente                                  | Procedimientos + `trg_transferencia_validar`  |
+| Débito, crédito y registro en una sola transacción, con las cuentas bloqueadas (`FOR UPDATE`) | `sp_transferir_*`                             |
+| Una cuenta INACTIVA o BLOQUEADA no envía ni recibe; INACTIVA exige saldo cero                 | `sp_cambiar_estado_cuenta`, `sp_transferir_*` |
 
 Orden de validación de SINPE Móvil: origen del cliente → origen ACTIVO y en colones → número
 registrado y afiliado → destino ACTIVO → cuentas distintas → monto positivo → límite diario →
