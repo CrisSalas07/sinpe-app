@@ -11,6 +11,7 @@ const rows = $('movements-rows');
 const alertBox = $('movements-alert');
 
 const currencyByIban = new Map();
+let lookups = 0; // only the answer to the latest request counts
 
 await initLayout('movements', 'CLIENTE');
 setCurrentMonth();
@@ -65,11 +66,13 @@ function movementRow(row, currency) {
 }
 
 async function loadMovements() {
+  const lookup = ++lookups;
   const currency = currencyByIban.get(iban.value);
   alertBox.hidden = true;
   try {
     const params = new URLSearchParams({ iban: iban.value, from: from.value, to: to.value });
     const result = await api(`/api/me/movements?${params}`);
+    if (lookup !== lookups) return;
     rows.replaceChildren(
       ...(result.movements.length > 0
         ? result.movements.map((row) => movementRow(row, currency))
@@ -78,6 +81,7 @@ async function loadMovements() {
     $('total-sent').textContent = formatMoney(result.totals.sent, currency);
     $('total-received').textContent = formatMoney(result.totals.received, currency);
   } catch (err) {
+    if (lookup !== lookups) return;
     rows.replaceChildren();
     $('total-sent').textContent = '';
     $('total-received').textContent = '';

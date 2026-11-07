@@ -4,8 +4,19 @@ import { compactName, formatPhone, shortIban } from './format.js';
 import { initLayout } from './layout.js';
 
 const $ = (id) => document.getElementById(id);
-const history = { number: $('history-number'), rows: $('history-rows'), alert: $('history-alert') };
-const phones = { iban: $('phones-iban'), rows: $('phones-rows'), alert: $('phones-alert') };
+// `lookups`: only the answer to the latest request of each report counts.
+const history = {
+  number: $('history-number'),
+  rows: $('history-rows'),
+  alert: $('history-alert'),
+  lookups: 0,
+};
+const phones = {
+  iban: $('phones-iban'),
+  rows: $('phones-rows'),
+  alert: $('phones-alert'),
+  lookups: 0,
+};
 
 await initLayout('reports', 'ADMIN');
 history.number.addEventListener('change', loadHistory);
@@ -55,11 +66,13 @@ function query(params) {
 }
 
 async function loadHistory() {
+  const lookup = ++history.lookups;
   history.alert.hidden = true;
   try {
     const rows = await api(
       `/api/reports/enrollment-history?${query({ number: history.number.value })}`,
     );
+    if (lookup !== history.lookups) return;
     history.rows.replaceChildren(
       ...rows.map((row) =>
         el(
@@ -72,15 +85,18 @@ async function loadHistory() {
       ),
     );
   } catch (err) {
+    if (lookup !== history.lookups) return;
     history.rows.replaceChildren();
     showAlert(history.alert, err);
   }
 }
 
 async function loadPhones() {
+  const lookup = ++phones.lookups;
   phones.alert.hidden = true;
   try {
     const rows = await api(`/api/reports/account-phones?${query({ iban: phones.iban.value })}`);
+    if (lookup !== phones.lookups) return;
     phones.rows.replaceChildren(
       ...rows.map((row) =>
         el(
@@ -93,6 +109,7 @@ async function loadPhones() {
       ),
     );
   } catch (err) {
+    if (lookup !== phones.lookups) return;
     phones.rows.replaceChildren();
     showAlert(phones.alert, err);
   }

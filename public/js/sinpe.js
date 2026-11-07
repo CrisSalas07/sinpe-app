@@ -29,7 +29,7 @@ changeForm.addEventListener('submit', onChangeAccount);
 for (const button of document.querySelectorAll('[data-close]')) {
   button.addEventListener('click', () => button.closest('dialog').close());
 }
-await Promise.all([loadEnrollments(), loadOptions()]);
+await reloadAll();
 showView();
 
 function alertOf(form) {
@@ -82,6 +82,12 @@ async function loadOptions() {
     ]);
     for (const phone of phones) phonesById.set(phone.id, phone);
     for (const account of accounts) accountsById.set(account.id, account);
+    // Reloaded after every write: keep what the admin had selected.
+    const keep = [enrollForm, changeForm].map((form) => ({
+      form,
+      phoneId: form.elements.phoneId?.value,
+      accountId: form.elements.accountId.value,
+    }));
     enrollForm.elements.phoneId.replaceChildren(
       ...phones.map((phone) =>
         el(
@@ -101,6 +107,10 @@ async function loadOptions() {
       );
     enrollForm.elements.accountId.replaceChildren(...accountOptions());
     changeForm.elements.accountId.replaceChildren(...accountOptions());
+    for (const { form, phoneId, accountId } of keep) {
+      if (phoneId) form.elements.phoneId.value = phoneId;
+      if (accountId) form.elements.accountId.value = accountId;
+    }
   } catch (err) {
     listAlert.textContent = err.message;
     listAlert.hidden = false;
@@ -185,14 +195,20 @@ async function onEnroll(event) {
   enrollOk.hidden = true;
   const phone = phonesById.get(Number(enrollForm.elements.phoneId.value));
   const account = accountsById.get(Number(enrollForm.elements.accountId.value));
+  // With an empty select the ids are missing and the server answers which field to fill.
   const ok = await submit(enrollForm, () =>
-    api('/api/sinpe', { method: 'POST', body: { phoneId: phone.id, accountId: account.id } }),
+    api('/api/sinpe', { method: 'POST', body: { phoneId: phone?.id, accountId: account?.id } }),
   );
   if (!ok) return;
-  // 11 Éxito: stay on the form with a confirmation, and refresh the list from the database.
+  // 11 Éxito: stay on the form with a confirmation, and refresh everything from the database.
   enrollOk.textContent = `${formatPhone(phone.number)} quedó afiliado a la cuenta ${shortIban(account.iban)}. Se registró el evento AFILIACION en el historial.`;
   enrollOk.hidden = false;
-  await loadEnrollments();
+  await reloadAll();
+}
+
+/** After every write: the list, the stats and the "afiliado / no afiliado" of the selects. */
+function reloadAll() {
+  return Promise.all([loadEnrollments(), loadOptions()]);
 }
 
 async function onUnenroll(event) {
@@ -202,7 +218,7 @@ async function onUnenroll(event) {
   );
   if (!ok) return;
   unenrollDialog.close();
-  await loadEnrollments();
+  await reloadAll();
 }
 
 async function onChangeAccount(event) {
@@ -215,5 +231,5 @@ async function onChangeAccount(event) {
   );
   if (!ok) return;
   changeDialog.close();
-  await loadEnrollments();
+  await reloadAll();
 }

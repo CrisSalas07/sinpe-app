@@ -31,6 +31,11 @@ export function errorHandler(err, req, res, next) {
   if (err.type === 'entity.too.large') {
     return res.status(413).json({ error: 'La solicitud es demasiado grande' });
   }
+  // Other client errors raised by Express or body-parser (malformed URL, bad charset...).
+  // Their own message is English and internal, so only the status is kept.
+  if (err.status >= 400 && err.status < 500) {
+    return res.status(err.status).json({ error: 'Solicitud no válida' });
+  }
 
   // Never log the whole error: mysql2 errors carry `sql` with the parameter values inlined.
   const { name, code, errno, sqlState, message, stack } = err;
