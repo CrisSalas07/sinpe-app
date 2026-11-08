@@ -103,13 +103,14 @@ function fillOriginSelect() {
   const keep = fields.originIban.value;
   const usable = type === 'sinpe' ? accounts.filter((a) => a.currency === 'CRC') : accounts;
   fields.originIban.replaceChildren(
-    ...usable.map((account) =>
-      el(
+    ...usable.map((account) => {
+      const status = account.status === 'ACTIVA' ? '' : ` · ${account.status}`;
+      return el(
         'option',
         { value: account.iban },
-        `${accountLabel(account.iban, account.currency)} · ${formatMoney(account.balance, account.currency)}`,
-      ),
-    ),
+        `${accountLabel(account.iban, account.currency)} · ${formatMoney(account.balance, account.currency)}${status}`,
+      );
+    }),
   );
   if (usable.some((account) => account.iban === keep)) fields.originIban.value = keep;
 }
@@ -213,6 +214,10 @@ async function loadLimit(origin) {
   const lookup = ++limitLookups;
   limitHelp.textContent = '';
   if (type !== 'sinpe' || !origin) return;
+  if (origin.status !== 'ACTIVA') {
+    limitHelp.textContent = 'Esta cuenta no está activa.';
+    return;
+  }
   try {
     const { available } = await api(
       `/api/transfers/limit?${new URLSearchParams({ iban: origin.iban })}`,
