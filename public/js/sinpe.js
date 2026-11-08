@@ -7,8 +7,9 @@ import {
   groupBy,
   groupedRows,
   showFormError,
+  tag,
 } from './dom.js';
-import { compactName, formatPhone, searchText, shortIban } from './format.js';
+import { compactName, formatPhone, searchText, shortIban, titleCase } from './format.js';
 import { initLayout } from './layout.js';
 
 const listView = document.getElementById('list-view');
@@ -145,6 +146,13 @@ function accountSummary(owned) {
     : count(ibans.size, 'cuenta', 'cuentas');
 }
 
+/** The IBAN of an enrollment, with a red tag when its account is not ACTIVA. */
+function ibanCell(item) {
+  const iban = el('span', { class: 'mono' }, shortIban(item.iban));
+  if (item.accountStatus === 'ACTIVA') return iban;
+  return el('span', {}, iban, ' ', tag(titleCase(item.accountStatus), 'bad'));
+}
+
 // One row per owner; their enrollments (with their actions) unfold below it.
 function renderRows() {
   const query = searchText(search.value.trim());
@@ -153,11 +161,7 @@ function renderRows() {
     key: owned[0].ownerId,
     label: compactName(owned[0].ownerNames, owned[0].ownerFirstSurname),
     summary: [count(owned.length, 'teléfono', 'teléfonos'), accountSummary(owned), ''],
-    items: owned.map((item) => [
-      formatPhone(item.number),
-      el('span', { class: 'mono' }, shortIban(item.iban)),
-      actions(item),
-    ]),
+    items: owned.map((item) => [formatPhone(item.number), ibanCell(item), actions(item)]),
   }));
   fillRows(rows, groupedRows(groups, openGroups, query !== ''), 'Sin resultados.');
 }
