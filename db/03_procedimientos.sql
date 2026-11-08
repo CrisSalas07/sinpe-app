@@ -470,8 +470,12 @@ begin
             signal sqlstate '45000' set message_text = 'El monto debe ser positivo';
         end if;
 
-        if v_estado_origen <> 'ACTIVA' or v_estado_destino <> 'ACTIVA' then
-            signal sqlstate '45000' set message_text = 'Ambas cuentas deben estar activas';
+        if v_estado_origen <> 'ACTIVA' then
+           signal sqlstate '45000' set message_text = 'La cuenta de origen no está activa';
+        end if;
+
+        if v_estado_destino <> 'ACTIVA' then
+           signal sqlstate '45000' set message_text = 'La cuenta de destino no está activa';
         end if;
 
         if v_moneda_origen <> v_moneda_destino then
