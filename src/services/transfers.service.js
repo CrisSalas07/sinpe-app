@@ -29,6 +29,8 @@ const IBAN_FIELDS = {
   'No se puede transferir a la misma cuenta': 'destinationIban',
   'Las cuentas deben tener la misma moneda': 'destinationIban',
   'El monto debe ser positivo': 'amount',
+  'La cuenta de origen no está activa': 'originIban',
+  'La cuenta de destino no está activa': 'destinationIban',
   'Saldo insuficiente': 'amount',
 };
 

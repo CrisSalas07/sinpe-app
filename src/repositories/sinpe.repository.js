@@ -13,6 +13,7 @@ export async function findAll(entityId) {
       cu.iban,
       e.codigo AS bankCode,
       cu.moneda AS currency,
+      cu.estado AS accountStatus,
       af.fecha_afiliacion AS enrolledAt
     FROM afiliacion_sinpe af
     JOIN telefono_cliente t ON t.id_telefono = af.id_telefono
