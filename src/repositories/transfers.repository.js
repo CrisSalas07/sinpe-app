@@ -1,7 +1,11 @@
 import { pool } from '../config/db.js';
 
-// Like a real receipt: a reference number (date + origin entity code + consecutive), no balances,
-// and a SINPE Móvil sender only gets the recipient's phone, never the IBAN of the account behind it.
+// Receipt: a reference number (date + origin entity code + consecutive), the balances of both
+// accounts before and after (the exercise asks to check them and the conserved total), and for
+// SINPE Móvil only the recipient's phone, never the IBAN of the account behind it.
+// "Before" is derived from "after" ± amount; DECIMAL math stays in SQL so money is never a JS float.
+// shortcut: read right after the CALL; a transfer committed in between on the same accounts would
+// shift both numbers. Fine for this demo; return the balances from the procedure if that matters.
 const RECEIPT_SQL = `
   SELECT
     t.id_transferencia AS id,
@@ -20,7 +24,12 @@ const RECEIPT_SQL = `
     tel.numero AS destinationNumber,
     cd.nombres AS destinationNames,
     cd.primer_apellido AS destinationSurname,
-    ed.codigo AS destinationEntity
+    ed.codigo AS destinationEntity,
+    o.saldo + t.monto AS originBalanceBefore,
+    o.saldo AS originBalanceAfter,
+    d.saldo - t.monto AS destinationBalanceBefore,
+    d.saldo AS destinationBalanceAfter,
+    o.saldo + d.saldo AS totalBalance
   FROM transferencia t
   JOIN cuenta_iban o ON o.id_cuenta = t.id_cuenta_origen
   JOIN cliente co ON co.id_cliente = o.id_cliente

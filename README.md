@@ -24,7 +24,7 @@ procedimientos.
 ## 1. Funcionamiento general
 
 - **Una app, varios bancos.** En la vida real cada banco tiene su propia app. Aquí hay una sola,
-  con un selector de **entidad financiera** en el inicio de sesión: BCR, BN, BP o BAC. Todo lo que
+  con un selector de **entidad financiera** en el inicio de sesión: BCR, BN, BP, BAC o Junta UCR. Todo lo que
   se ve y se hace queda limitado a la entidad elegida.
 - **Dos roles:**
   - **Administrador** (personal del banco): registra clientes, cuentas y teléfonos, afilia
@@ -192,16 +192,19 @@ Si falta alguna variable, la app no arranca y dice cuál falta.
 El usuario de un cliente es **primer nombre + punto + primer apellido**, en minúsculas y sin
 tildes. Solo puede entrar en las entidades donde tiene cuenta:
 
-| Entidad | Clientes (cuenta)                                                                                                                                                                                                                                                             |
-| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **BCR** | `leonardo.aguilar` (001), `cristopher.buso` (005), `dilan.gonzalez` (009), `john.marin` (013), `jandany.moya` (017), `steven.ramirez` (021), `hugo.arauz` (026 USD), `cristopher.mora` (030 USD), `ivan.altamirano` (033), `kendall.montero` (035), `scarlette.rosales` (036) |
-| **BN**  | `ivan.altamirano` (002), `keity.chavarria` (006), `reiko.gonzalez` (010), `kendall.montero` (014), `astrid.munguia` (018), `scarlette.rosales` (022), `hugo.gurdian` (029 USD), `darlin.chaves` (034 BLOQUEADA)                                                               |
-| **BP**  | `hugo.arauz` (003), `darlin.chaves` (007), `jefferson.granados` (011), `cristopher.mora` (015), `lucia.palacio` (019), `bayron.sanchez` (023), `leonardo.aguilar` (025 USD), `dilan.gonzalez` (028 USD), `steven.ramirez` (032 USD)                                           |
-| **BAC** | `hairon.azofeifa` (004), `mariela.chinchilla` (008), `hugo.gurdian` (012), `camila.mora` (016), `diego.pastran` (020), `diego.sanchez` (024), `keity.chavarria` (027 USD), `astrid.munguia` (031 USD)                                                                         |
+| Entidad      | Clientes (cuenta)                                                                                                                                                                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **BCR**      | `leonardo.aguilar` (001), `cristopher.buso` (005), `dilan.gonzalez` (009), `john.marin` (013), `jandany.moya` (017), `steven.ramirez` (021), `hugo.arauz` (026 USD), `cristopher.mora` (030 USD), `ivan.altamirano` (033), `kendall.montero` (035), `scarlette.rosales` (036) |
+| **BN**       | `ivan.altamirano` (002), `keity.chavarria` (006), `reiko.gonzalez` (010), `kendall.montero` (014), `astrid.munguia` (018), `scarlette.rosales` (022), `hugo.gurdian` (029 USD), `darlin.chaves` (034 BLOQUEADA)                                                               |
+| **BP**       | `hugo.arauz` (003), `darlin.chaves` (007), `jefferson.granados` (011), `cristopher.mora` (015), `lucia.palacio` (019), `bayron.sanchez` (023), `leonardo.aguilar` (025 USD), `dilan.gonzalez` (028 USD), `steven.ramirez` (032 USD)                                           |
+| **BAC**      | `hairon.azofeifa` (004), `mariela.chinchilla` (008), `hugo.gurdian` (012), `camila.mora` (016), `diego.pastran` (020), `diego.sanchez` (024), `keity.chavarria` (027 USD), `astrid.munguia` (031 USD)                                                                         |
+| **JUNTAUCR** | `leonardo.aguilar` (037), `ivan.altamirano` (038), `hugo.arauz` (039 USD)                                                                                                                                                                                                     |
 
 Las cuentas son en colones salvo que diga USD. Los IBAN siguen el formato `CR12` + `0` + código
 del banco + número de cuenta en 14 dígitos; por ejemplo, la 001 del BCR es
-`CR12015200000000000001`.
+`CR12015200000000000001`. La Junta UCR no tiene código IBAN propio en la vida real (usa cuentas en
+el BN, el BCR y el BP), así que aquí usa el código ficticio **999**: su cuenta 037 es
+`CR12099900000000000037`.
 
 **Usuarios útiles para la demostración:**
 
@@ -209,6 +212,9 @@ del banco + número de cuenta en 14 dígitos; por ejemplo, la 001 del BCR es
 - `jandany.moya` (BCR): cuenta 017 con ₡507 847, para probar el **límite diario** (₡200 000).
 - `hugo.arauz` (BCR): solo tiene una cuenta en **dólares**.
 - `ivan.altamirano` (BN y BCR): su número `8000-0002` está afiliado en el BN.
+- **Junta UCR:** `ivan.altamirano` tiene `7000-0002` afiliado a su cuenta 038, así que se le puede
+  enviar SINPE Móvil desde cualquier banco. El administrador puede afiliar `6000-0001` (de Leonardo,
+  sin afiliar) a la cuenta 037, y con `hugo.arauz` reproducir "cuenta no válida" (039 USD).
 
 ## 6. Manual de usuario
 
@@ -301,7 +307,8 @@ el banco).
    transferencia** la envía; los botones se bloquean mientras se procesa, así que no se envía dos
    veces.
 5. El **comprobante** muestra el número de referencia (fecha + código del banco + consecutivo), el
-   monto, el origen, el destino y la comisión (siempre ₡0).
+   monto, el origen, el destino, la comisión (siempre ₡0) y los saldos de las dos cuentas antes y
+   después, con el total de ambas, que se conserva (informe 6 del enunciado).
 6. Si la base de datos rechaza la transferencia, la app vuelve a Datos con el mensaje y el campo en
    rojo.
 
