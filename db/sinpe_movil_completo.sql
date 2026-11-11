@@ -173,7 +173,8 @@ INSERT INTO `entidad_financiera` (`id_entidad`, `codigo`, `nombre`, `codigo_iban
   (1,'BCR','Banco de Costa Rica','152',200000.00),
   (2,'BN','Banco Nacional de Costa Rica','151',200000.00),
   (3,'BP','Banco Popular y de Desarrollo Comunal','161',200000.00),
-  (4,'BAC','BAC Credomatic','102',200000.00);
+  (4,'BAC','BAC Credomatic','102',200000.00),
+  (5,'JUNTAUCR','Junta UCR','999',200000.00);
 
 INSERT INTO `moneda` (`codigo`, `descripcion`) VALUES
   ('CRC','Colón costarricense'),
@@ -215,7 +216,10 @@ INSERT INTO `cuenta_iban` (`id_cuenta`, `id_cliente`, `id_entidad`, `moneda`, `i
   (33,2,1,'CRC','CR12015200000000000033',45806.00,'ACTIVA','2026-01-06'),
   (34,7,2,'CRC','CR12015100000000000034',135321.00,'BLOQUEADA','2026-01-07'),
   (35,14,1,'CRC','CR12015200000000000035',40642.00,'ACTIVA','2026-01-08'),
-  (36,22,1,'CRC','CR12015200000000000036',183866.00,'ACTIVA','2026-01-09');
+  (36,22,1,'CRC','CR12015200000000000036',183866.00,'ACTIVA','2026-01-09'),
+  (37,1,5,'CRC','CR12099900000000000037',250000.00,'ACTIVA','2026-01-10'),
+  (38,2,5,'CRC','CR12099900000000000038',150000.00,'ACTIVA','2026-01-11'),
+  (39,3,5,'USD','CR12099900000000000039',500.00,'ACTIVA','2026-01-12');
 
 INSERT INTO `telefono_cliente` (`id_telefono`, `id_cliente`, `numero`, `fecha_registro`) VALUES
   (1,1,'80000001','2026-11-04 11:02:19'),
@@ -255,7 +259,8 @@ INSERT INTO `telefono_cliente` (`id_telefono`, `id_cliente`, `numero`, `fecha_re
   (35,18,'70000018','2026-11-04 11:02:19'),
   (36,20,'70000020','2026-11-04 11:02:19'),
   (37,22,'70000022','2026-11-04 11:02:19'),
-  (38,24,'70000024','2026-11-04 11:02:19');
+  (38,24,'70000024','2026-11-04 11:02:19'),
+  (39,1,'60000001','2026-11-04 11:02:19');
 
 INSERT INTO `afiliacion_sinpe` (`id_afiliacion`, `id_telefono`, `id_cuenta`, `fecha_afiliacion`) VALUES
   (1,1,1,'2026-11-04 11:02:19'),
@@ -281,7 +286,8 @@ INSERT INTO `afiliacion_sinpe` (`id_afiliacion`, `id_telefono`, `id_cuenta`, `fe
   (21,27,3,'2026-11-04 11:02:19'),
   (22,29,6,'2026-11-04 11:02:19'),
   (23,31,10,'2026-11-04 11:02:19'),
-  (24,33,14,'2026-11-04 11:02:19');
+  (24,33,14,'2026-11-04 11:02:19'),
+  (25,26,38,'2026-11-04 11:02:19');
 
 INSERT INTO `cliente_entidad` (`id_cliente`, `id_entidad`, `usuario`, `password_hash`, `fecha_registro`) VALUES
   (1,1,'leonardo.aguilar','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
@@ -319,7 +325,10 @@ INSERT INTO `cliente_entidad` (`id_cliente`, `id_entidad`, `usuario`, `password_
   (22,1,'scarlette.rosales','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
   (22,2,'scarlette.rosales','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
   (23,3,'bayron.sanchez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
-  (24,4,'diego.sanchez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19');
+  (24,4,'diego.sanchez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (1,5,'leonardo.aguilar','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (2,5,'ivan.altamirano','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (3,5,'hugo.arauz','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19');
 
 INSERT INTO `historial_afiliacion` (`id_historial`, `id_telefono`, `id_cuenta`, `accion`, `fecha_evento`) VALUES
   (1,1,1,'AFILIACION','2026-11-04 11:02:19'),
@@ -345,7 +354,8 @@ INSERT INTO `historial_afiliacion` (`id_historial`, `id_telefono`, `id_cuenta`, 
   (21,27,3,'AFILIACION','2026-11-04 11:02:19'),
   (22,29,6,'AFILIACION','2026-11-04 11:02:19'),
   (23,31,10,'AFILIACION','2026-11-04 11:02:19'),
-  (24,33,14,'AFILIACION','2026-11-04 11:02:19');
+  (24,33,14,'AFILIACION','2026-11-04 11:02:19'),
+  (25,26,38,'AFILIACION','2026-11-04 11:02:19');
 
 INSERT INTO `transferencia` (`id_transferencia`, `id_cuenta_origen`, `id_cuenta_destino`, `monto`, `tipo`, `fecha`, `detalle`) VALUES
   (1,1,2,5000.00,'IBAN','2026-11-04 11:29:25','prueba');

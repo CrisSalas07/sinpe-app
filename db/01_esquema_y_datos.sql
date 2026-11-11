@@ -114,7 +114,9 @@ INSERT INTO entidad_financiera (codigo,nombre,codigo_iban)
 	VALUES ('BCR','Banco de Costa Rica','152'),
     ('BN','Banco Nacional de Costa Rica','151'),
     ('BP','Banco Popular y de Desarrollo Comunal','161'),
-    ('BAC','BAC Credomatic','102');
+    ('BAC','BAC Credomatic','102'),
+    -- La Junta UCR no tiene codigo IBAN propio (usa cuentas en BN, BCR y BP); 999 es ficticio
+    ('JUNTAUCR','Junta UCR','999');
 
 -- CLIENTES: 24
 INSERT INTO cliente (identificacion,nombres,primer_apellido,segundo_apellido,correo,estado) VALUES ('UCR000001','LEONARDO ANTONIO','AGUILAR','BERROCAL','leonardo.aguilar.berrocal@ucr.ac.cr','ACTIVO');
@@ -179,6 +181,10 @@ INSERT INTO cuenta_iban (id_cliente,id_entidad,moneda,iban,saldo,estado,fecha_ap
 INSERT INTO cuenta_iban (id_cliente,id_entidad,moneda,iban,saldo,estado,fecha_apertura) VALUES (7,2,'CRC','CR12015100000000000034',135321.00,'BLOQUEADA','2026-01-07');
 INSERT INTO cuenta_iban (id_cliente,id_entidad,moneda,iban,saldo,estado,fecha_apertura) VALUES (14,1,'CRC','CR12015200000000000035',40642.00,'ACTIVA','2026-01-08');
 INSERT INTO cuenta_iban (id_cliente,id_entidad,moneda,iban,saldo,estado,fecha_apertura) VALUES (22,1,'CRC','CR12015200000000000036',183866.00,'ACTIVA','2026-01-09');
+-- Junta UCR (entidad 5): Leonardo y Ivan en colones; Hugo solo en dolares (para "cuenta no valida")
+INSERT INTO cuenta_iban (id_cliente,id_entidad,moneda,iban,saldo,estado,fecha_apertura) VALUES (1,5,'CRC','CR12099900000000000037',250000.00,'ACTIVA','2026-01-10');
+INSERT INTO cuenta_iban (id_cliente,id_entidad,moneda,iban,saldo,estado,fecha_apertura) VALUES (2,5,'CRC','CR12099900000000000038',150000.00,'ACTIVA','2026-01-11');
+INSERT INTO cuenta_iban (id_cliente,id_entidad,moneda,iban,saldo,estado,fecha_apertura) VALUES (3,5,'USD','CR12099900000000000039',500.00,'ACTIVA','2026-01-12');
 
 -- TELEFONOS: 1 o 2 por cliente; no todos estaran afiliados
 INSERT INTO telefono_cliente (id_cliente,numero) VALUES (1,'80000001');
@@ -219,6 +225,8 @@ INSERT INTO telefono_cliente (id_cliente,numero) VALUES (18,'70000018');
 INSERT INTO telefono_cliente (id_cliente,numero) VALUES (20,'70000020');
 INSERT INTO telefono_cliente (id_cliente,numero) VALUES (22,'70000022');
 INSERT INTO telefono_cliente (id_cliente,numero) VALUES (24,'70000024');
+-- 60000001 de Leonardo queda sin afiliar, para probar Afiliar en la Junta UCR
+INSERT INTO telefono_cliente (id_cliente,numero) VALUES (1,'60000001');
 
 -- AFILIACIONES INICIALES: solo telefonos del titular hacia su cuenta CRC activa
 INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (1,1);
@@ -245,6 +253,8 @@ INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (27,3);
 INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (29,6);
 INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (31,10);
 INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (33,14);
+-- 70000002 de Ivan, afiliado a su cuenta de la Junta UCR: recibe SINPE Movil ahi
+INSERT INTO afiliacion_sinpe (id_telefono,id_cuenta) VALUES (26,38);
 
 -- CREDENCIALES: una fila por cada par (cliente, entidad) donde el cliente tiene al menos una cuenta.
 -- Usuario: primer nombre + "." + primer apellido, en minusculas. Contraseña de todos: Cliente2026

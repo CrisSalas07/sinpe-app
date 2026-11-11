@@ -444,5 +444,14 @@ function showReceipt(result, sentId) {
       ...idRow(isSinpe ? '' : sentId),
       ...detailRow(result.detail),
       kvRow('Comisión', money('0')),
+      kvRow(
+        'Saldo del origen',
+        `${money(result.originBalanceBefore)} → ${money(result.originBalanceAfter)}`,
+      ),
+      kvRow(
+        'Saldo del destino',
+        `${money(result.destinationBalanceBefore)} → ${money(result.destinationBalanceAfter)}`,
+      ),
+      kvRow('Total de ambas cuentas', `${money(result.totalBalance)} (se conserva)`),
     );
 }
