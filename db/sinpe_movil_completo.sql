@@ -1,30 +1,79 @@
--- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
---
--- Host: localhost    Database: sinpe_movil
--- ------------------------------------------------------
--- Server version	8.0.45
+-- SINPE JUNTAUCR: full database (schema, data, triggers and procedures).
+-- Warning: drops and recreates the sinpe_movil database.
 
-CREATE DATABASE IF NOT EXISTS sinpe_movil CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+DROP DATABASE IF EXISTS sinpe_movil;
+CREATE DATABASE sinpe_movil CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE sinpe_movil;
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+-- ======================================================================
+-- Tables
+-- ======================================================================
 
---
--- Table structure for table `afiliacion_sinpe`
---
+CREATE TABLE `cliente` (
+  `id_cliente` int NOT NULL AUTO_INCREMENT,
+  `identificacion` varchar(20) NOT NULL,
+  `nombres` varchar(80) NOT NULL,
+  `primer_apellido` varchar(60) NOT NULL,
+  `segundo_apellido` varchar(60) NOT NULL,
+  `correo` varchar(120) NOT NULL,
+  `fecha_registro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `estado` enum('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
+  PRIMARY KEY (`id_cliente`),
+  UNIQUE KEY `identificacion` (`identificacion`),
+  UNIQUE KEY `correo` (`correo`)
+);
 
-DROP TABLE IF EXISTS `afiliacion_sinpe`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `entidad_financiera` (
+  `id_entidad` int NOT NULL AUTO_INCREMENT,
+  `codigo` varchar(12) NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `codigo_iban` char(3) NOT NULL,
+  `limite_diario_sinpe` decimal(15,2) NOT NULL DEFAULT '200000.00',
+  PRIMARY KEY (`id_entidad`),
+  UNIQUE KEY `codigo` (`codigo`),
+  UNIQUE KEY `nombre` (`nombre`),
+  UNIQUE KEY `codigo_iban` (`codigo_iban`)
+);
+
+CREATE TABLE `moneda` (
+  `codigo` char(3) NOT NULL,
+  `descripcion` varchar(40) NOT NULL,
+  PRIMARY KEY (`codigo`),
+  UNIQUE KEY `descripcion` (`descripcion`)
+);
+
+CREATE TABLE `cuenta_iban` (
+  `id_cuenta` int NOT NULL AUTO_INCREMENT,
+  `id_cliente` int NOT NULL,
+  `id_entidad` int NOT NULL,
+  `moneda` char(3) NOT NULL,
+  `iban` char(22) NOT NULL,
+  `saldo` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `estado` enum('ACTIVA','INACTIVA','BLOQUEADA') NOT NULL DEFAULT 'ACTIVA',
+  `fecha_apertura` date NOT NULL,
+  PRIMARY KEY (`id_cuenta`),
+  UNIQUE KEY `iban` (`iban`),
+  KEY `fk_cuenta_cliente` (`id_cliente`),
+  KEY `fk_cuenta_entidad` (`id_entidad`),
+  KEY `fk_cuenta_moneda` (`moneda`),
+  CONSTRAINT `fk_cuenta_cliente` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
+  CONSTRAINT `fk_cuenta_entidad` FOREIGN KEY (`id_entidad`) REFERENCES `entidad_financiera` (`id_entidad`),
+  CONSTRAINT `fk_cuenta_moneda` FOREIGN KEY (`moneda`) REFERENCES `moneda` (`codigo`),
+  CONSTRAINT `chk_cuenta_saldo` CHECK ((`saldo` >= 0))
+);
+
+CREATE TABLE `telefono_cliente` (
+  `id_telefono` int NOT NULL AUTO_INCREMENT,
+  `id_cliente` int NOT NULL,
+  `numero` varchar(8) NOT NULL,
+  `fecha_registro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_telefono`),
+  UNIQUE KEY `numero` (`numero`),
+  KEY `fk_telefono_cliente` (`id_cliente`),
+  CONSTRAINT `fk_telefono_cliente` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
+  CONSTRAINT `chk_telefono_formato` CHECK (regexp_like(`numero`,_utf8mb4'^[0-9]{8}$'))
+);
+
 CREATE TABLE `afiliacion_sinpe` (
   `id_afiliacion` int NOT NULL AUTO_INCREMENT,
   `id_telefono` int NOT NULL,
@@ -35,28 +84,280 @@ CREATE TABLE `afiliacion_sinpe` (
   KEY `fk_afiliacion_cuenta` (`id_cuenta`),
   CONSTRAINT `fk_afiliacion_cuenta` FOREIGN KEY (`id_cuenta`) REFERENCES `cuenta_iban` (`id_cuenta`),
   CONSTRAINT `fk_afiliacion_telefono` FOREIGN KEY (`id_telefono`) REFERENCES `telefono_cliente` (`id_telefono`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+);
 
---
--- Dumping data for table `afiliacion_sinpe`
---
+CREATE TABLE `cliente_entidad` (
+  `id_cliente` int NOT NULL,
+  `id_entidad` int NOT NULL,
+  `usuario` varchar(50) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `fecha_registro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_cliente`,`id_entidad`),
+  UNIQUE KEY `uq_cliente_entidad_usuario` (`id_entidad`,`usuario`),
+  CONSTRAINT `fk_ce_cliente` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
+  CONSTRAINT `fk_ce_entidad` FOREIGN KEY (`id_entidad`) REFERENCES `entidad_financiera` (`id_entidad`)
+);
 
-LOCK TABLES `afiliacion_sinpe` WRITE;
-/*!40000 ALTER TABLE `afiliacion_sinpe` DISABLE KEYS */;
-INSERT INTO `afiliacion_sinpe` VALUES (1,1,1,'2026-11-04 11:02:19'),(2,2,2,'2026-11-04 11:02:19'),(3,3,3,'2026-11-04 11:02:19'),(4,4,4,'2026-11-04 11:02:19'),(5,5,5,'2026-11-04 11:02:19'),(6,6,6,'2026-11-04 11:02:19'),(7,7,7,'2026-11-04 11:02:19'),(8,8,8,'2026-11-04 11:02:19'),(9,9,9,'2026-11-04 11:02:19'),(10,10,10,'2026-11-04 11:02:19'),(11,11,11,'2026-11-04 11:02:19'),(12,12,12,'2026-11-04 11:02:19'),(13,13,13,'2026-11-04 11:02:19'),(14,14,14,'2026-11-04 11:02:19'),(15,15,15,'2026-11-04 11:02:19'),(16,16,16,'2026-11-04 11:02:19'),(17,17,17,'2026-11-04 11:02:19'),(18,18,18,'2026-11-04 11:02:19'),(19,19,19,'2026-11-04 11:02:19'),(20,25,1,'2026-11-04 11:02:19'),(21,27,3,'2026-11-04 11:02:19'),(22,29,6,'2026-11-04 11:02:19'),(23,31,10,'2026-11-04 11:02:19'),(24,33,14,'2026-11-04 11:02:19');
-/*!40000 ALTER TABLE `afiliacion_sinpe` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_validar_afiliacion` BEFORE INSERT ON `afiliacion_sinpe` FOR EACH ROW begin
+CREATE TABLE `historial_afiliacion` (
+  `id_historial` bigint NOT NULL AUTO_INCREMENT,
+  `id_telefono` int NOT NULL,
+  `id_cuenta` int NOT NULL,
+  `accion` enum('AFILIACION','DESAFILIACION') NOT NULL,
+  `fecha_evento` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_historial`),
+  KEY `fk_historial_telefono` (`id_telefono`),
+  KEY `fk_historial_cuenta` (`id_cuenta`),
+  CONSTRAINT `fk_historial_cuenta` FOREIGN KEY (`id_cuenta`) REFERENCES `cuenta_iban` (`id_cuenta`),
+  CONSTRAINT `fk_historial_telefono` FOREIGN KEY (`id_telefono`) REFERENCES `telefono_cliente` (`id_telefono`)
+);
+
+CREATE TABLE `transferencia` (
+  `id_transferencia` bigint NOT NULL AUTO_INCREMENT,
+  `id_cuenta_origen` int NOT NULL,
+  `id_cuenta_destino` int NOT NULL,
+  `monto` decimal(15,2) NOT NULL,
+  `tipo` enum('SINPE_MOVIL','IBAN') NOT NULL,
+  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `detalle` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id_transferencia`),
+  KEY `fk_transferencia_origen` (`id_cuenta_origen`),
+  KEY `fk_transferencia_destino` (`id_cuenta_destino`),
+  CONSTRAINT `fk_transferencia_destino` FOREIGN KEY (`id_cuenta_destino`) REFERENCES `cuenta_iban` (`id_cuenta`),
+  CONSTRAINT `fk_transferencia_origen` FOREIGN KEY (`id_cuenta_origen`) REFERENCES `cuenta_iban` (`id_cuenta`)
+);
+
+CREATE TABLE `transferencia_sinpe` (
+  `id_transferencia` bigint NOT NULL,
+  `id_telefono_origen` int DEFAULT NULL,
+  `id_telefono_destino` int NOT NULL,
+  PRIMARY KEY (`id_transferencia`),
+  KEY `fk_ts_telefono_origen` (`id_telefono_origen`),
+  KEY `fk_ts_telefono_destino` (`id_telefono_destino`),
+  CONSTRAINT `fk_ts_telefono_destino` FOREIGN KEY (`id_telefono_destino`) REFERENCES `telefono_cliente` (`id_telefono`),
+  CONSTRAINT `fk_ts_telefono_origen` FOREIGN KEY (`id_telefono_origen`) REFERENCES `telefono_cliente` (`id_telefono`),
+  CONSTRAINT `fk_ts_transferencia` FOREIGN KEY (`id_transferencia`) REFERENCES `transferencia` (`id_transferencia`)
+);
+
+
+-- ======================================================================
+-- Data
+-- ======================================================================
+
+INSERT INTO `cliente` (`id_cliente`, `identificacion`, `nombres`, `primer_apellido`, `segundo_apellido`, `correo`, `fecha_registro`, `estado`) VALUES
+  (1,'UCR000001','LEONARDO ANTONIO','AGUILAR','BERROCAL','leonardo.aguilar.berrocal@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (2,'UCR000002','IVAN CALET','ALTAMIRANO','ABARCA','ivan.altamirano.abarca@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (3,'UCR000003','HUGO ARIEL','ARAUZ','MAROTO','hugo.arauz.maroto@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (4,'UCR000004','HAIRON DANIEL','AZOFEIFA','SANCHEZ','hairon.azofeifa.sanchez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (5,'UCR000005','CRISTOPHER EDUARDO','BUSO','BOLAÑOS','cristopher.buso.bolanos@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (6,'UCR000006','KEITY DAYANA','CHAVARRIA','STELLER','keity.chavarria.steller@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (7,'UCR000007','DARLIN PATRICIA','CHAVES','ALVARADO','darlin.chaves.alvarado@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (8,'UCR000008','MARIELA CAROLINA','CHINCHILLA','GONZALEZ','mariela.chinchilla.gonzalez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (9,'UCR000009','DILAN JAVIER','GONZALEZ','BADILLA','dilan.gonzalez.badilla@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (10,'UCR000010','REIKO JISLEN','GONZALEZ','PORTUGUEZ','reiko.gonzalez.portuguez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (11,'UCR000011','JEFFERSON DAVID','GRANADOS','VENEGAS','jefferson.granados.venegas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (12,'UCR000012','HUGO JOSE','GURDIAN','SOLORZANO','hugo.gurdian.solorzano@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (13,'UCR000013','JOHN LEANDRO','MARIN','SALAS','john.marin.salas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (14,'UCR000014','KENDALL NAUM','MONTERO','CORTES','kendall.montero.cortes@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (15,'UCR000015','CRISTOPHER','MORA','SALAS','cristopher.mora.salas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (16,'UCR000016','CAMILA NAHOMI','MORA','VILLALOBOS','camila.mora.villalobos@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (17,'UCR000017','JANDANY','MOYA','GARCIA','jandany.moya.garcia@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (18,'UCR000018','ASTRID VALESKA','MUNGUIA','ROJAS','astrid.munguia.rojas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (19,'UCR000019','LUCIA MARGARITA','PALACIO','AYERDIS','lucia.palacio.ayerdis@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (20,'UCR000020','DIEGO','PASTRAN','MEDINA','diego.pastran.medina@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (21,'UCR000021','STEVEN GABRIEL','RAMIREZ','PALACIOS','steven.ramirez.palacios@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (22,'UCR000022','SCARLETTE YALENA','ROSALES','PEREZ','scarlette.rosales.perez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (23,'UCR000023','BAYRON AXEL','SANCHEZ','CONCEPCION','bayron.sanchez.concepcion@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),
+  (24,'UCR000024','DIEGO ARANTES','SANCHEZ','LEZAMA','diego.sanchez.lezama@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO');
+
+INSERT INTO `entidad_financiera` (`id_entidad`, `codigo`, `nombre`, `codigo_iban`, `limite_diario_sinpe`) VALUES
+  (1,'BCR','Banco de Costa Rica','152',200000.00),
+  (2,'BN','Banco Nacional de Costa Rica','151',200000.00),
+  (3,'BP','Banco Popular y de Desarrollo Comunal','161',200000.00),
+  (4,'BAC','BAC Credomatic','102',200000.00);
+
+INSERT INTO `moneda` (`codigo`, `descripcion`) VALUES
+  ('CRC','Colón costarricense'),
+  ('USD','Dólar estadounidense');
+
+INSERT INTO `cuenta_iban` (`id_cuenta`, `id_cliente`, `id_entidad`, `moneda`, `iban`, `saldo`, `estado`, `fecha_apertura`) VALUES
+  (1,1,1,'CRC','CR12015200000000000001',118991.00,'ACTIVA','2026-01-02'),
+  (2,2,2,'CRC','CR12015100000000000002',202982.00,'ACTIVA','2026-01-03'),
+  (3,3,3,'CRC','CR12016100000000000003',271973.00,'ACTIVA','2026-01-04'),
+  (4,4,4,'CRC','CR12010200000000000004',345964.00,'ACTIVA','2026-01-05'),
+  (5,5,1,'CRC','CR12015200000000000005',419955.00,'ACTIVA','2026-01-06'),
+  (6,6,2,'CRC','CR12015100000000000006',493946.00,'ACTIVA','2026-01-07'),
+  (7,7,3,'CRC','CR12016100000000000007',567937.00,'ACTIVA','2026-01-08'),
+  (8,8,4,'CRC','CR12010200000000000008',641928.00,'ACTIVA','2026-01-09'),
+  (9,9,1,'CRC','CR12015200000000000009',715919.00,'ACTIVA','2026-01-10'),
+  (10,10,2,'CRC','CR12015100000000000010',789910.00,'ACTIVA','2026-01-11'),
+  (11,11,3,'CRC','CR12016100000000000011',63901.00,'ACTIVA','2026-01-12'),
+  (12,12,4,'CRC','CR12010200000000000012',137892.00,'ACTIVA','2026-01-13'),
+  (13,13,1,'CRC','CR12015200000000000013',211883.00,'ACTIVA','2026-01-14'),
+  (14,14,2,'CRC','CR12015100000000000014',285874.00,'ACTIVA','2026-01-15'),
+  (15,15,3,'CRC','CR12016100000000000015',359865.00,'ACTIVA','2026-01-16'),
+  (16,16,4,'CRC','CR12010200000000000016',433856.00,'ACTIVA','2026-01-17'),
+  (17,17,1,'CRC','CR12015200000000000017',507847.00,'ACTIVA','2026-01-18'),
+  (18,18,2,'CRC','CR12015100000000000018',581838.00,'ACTIVA','2026-01-19'),
+  (19,19,3,'CRC','CR12016100000000000019',655829.00,'ACTIVA','2026-01-20'),
+  (20,20,4,'CRC','CR12010200000000000020',729820.00,'ACTIVA','2026-01-21'),
+  (21,21,1,'CRC','CR12015200000000000021',803811.00,'ACTIVA','2026-01-22'),
+  (22,22,2,'CRC','CR12015100000000000022',77802.00,'ACTIVA','2026-01-23'),
+  (23,23,3,'CRC','CR12016100000000000023',151793.00,'ACTIVA','2026-01-24'),
+  (24,24,4,'CRC','CR12010200000000000024',225784.00,'ACTIVA','2026-01-25'),
+  (25,1,3,'USD','CR12016100000000000025',377.00,'ACTIVA','2026-01-26'),
+  (26,3,1,'USD','CR12015200000000000026',631.00,'ACTIVA','2026-01-27'),
+  (27,6,4,'USD','CR12010200000000000027',1012.00,'ACTIVA','2026-01-28'),
+  (28,9,3,'USD','CR12016100000000000028',1393.00,'ACTIVA','2026-01-01'),
+  (29,12,2,'USD','CR12015100000000000029',1774.00,'ACTIVA','2026-01-02'),
+  (30,15,1,'USD','CR12015200000000000030',2155.00,'ACTIVA','2026-01-03'),
+  (31,18,4,'USD','CR12010200000000000031',2536.00,'ACTIVA','2026-01-04'),
+  (32,21,3,'USD','CR12016100000000000032',2917.00,'ACTIVA','2026-01-05'),
+  (33,2,1,'CRC','CR12015200000000000033',45806.00,'ACTIVA','2026-01-06'),
+  (34,7,2,'CRC','CR12015100000000000034',135321.00,'BLOQUEADA','2026-01-07'),
+  (35,14,1,'CRC','CR12015200000000000035',40642.00,'ACTIVA','2026-01-08'),
+  (36,22,1,'CRC','CR12015200000000000036',183866.00,'ACTIVA','2026-01-09');
+
+INSERT INTO `telefono_cliente` (`id_telefono`, `id_cliente`, `numero`, `fecha_registro`) VALUES
+  (1,1,'80000001','2026-11-04 11:02:19'),
+  (2,2,'80000002','2026-11-04 11:02:19'),
+  (3,3,'80000003','2026-11-04 11:02:19'),
+  (4,4,'80000004','2026-11-04 11:02:19'),
+  (5,5,'80000005','2026-11-04 11:02:19'),
+  (6,6,'80000006','2026-11-04 11:02:19'),
+  (7,7,'80000007','2026-11-04 11:02:19'),
+  (8,8,'80000008','2026-11-04 11:02:19'),
+  (9,9,'80000009','2026-11-04 11:02:19'),
+  (10,10,'80000010','2026-11-04 11:02:19'),
+  (11,11,'80000011','2026-11-04 11:02:19'),
+  (12,12,'80000012','2026-11-04 11:02:19'),
+  (13,13,'80000013','2026-11-04 11:02:19'),
+  (14,14,'80000014','2026-11-04 11:02:19'),
+  (15,15,'80000015','2026-11-04 11:02:19'),
+  (16,16,'80000016','2026-11-04 11:02:19'),
+  (17,17,'80000017','2026-11-04 11:02:19'),
+  (18,18,'80000018','2026-11-04 11:02:19'),
+  (19,19,'80000019','2026-11-04 11:02:19'),
+  (20,20,'80000020','2026-11-04 11:02:19'),
+  (21,21,'80000021','2026-11-04 11:02:19'),
+  (22,22,'80000022','2026-11-04 11:02:19'),
+  (23,23,'80000023','2026-11-04 11:02:19'),
+  (24,24,'80000024','2026-11-04 11:02:19'),
+  (25,1,'70000001','2026-11-04 11:02:19'),
+  (26,2,'70000002','2026-11-04 11:02:19'),
+  (27,3,'70000003','2026-11-04 11:02:19'),
+  (28,5,'70000005','2026-11-04 11:02:19'),
+  (29,6,'70000006','2026-11-04 11:02:19'),
+  (30,8,'70000008','2026-11-04 11:02:19'),
+  (31,10,'70000010','2026-11-04 11:02:19'),
+  (32,12,'70000012','2026-11-04 11:02:19'),
+  (33,14,'70000014','2026-11-04 11:02:19'),
+  (34,16,'70000016','2026-11-04 11:02:19'),
+  (35,18,'70000018','2026-11-04 11:02:19'),
+  (36,20,'70000020','2026-11-04 11:02:19'),
+  (37,22,'70000022','2026-11-04 11:02:19'),
+  (38,24,'70000024','2026-11-04 11:02:19');
+
+INSERT INTO `afiliacion_sinpe` (`id_afiliacion`, `id_telefono`, `id_cuenta`, `fecha_afiliacion`) VALUES
+  (1,1,1,'2026-11-04 11:02:19'),
+  (2,2,2,'2026-11-04 11:02:19'),
+  (3,3,3,'2026-11-04 11:02:19'),
+  (4,4,4,'2026-11-04 11:02:19'),
+  (5,5,5,'2026-11-04 11:02:19'),
+  (6,6,6,'2026-11-04 11:02:19'),
+  (7,7,7,'2026-11-04 11:02:19'),
+  (8,8,8,'2026-11-04 11:02:19'),
+  (9,9,9,'2026-11-04 11:02:19'),
+  (10,10,10,'2026-11-04 11:02:19'),
+  (11,11,11,'2026-11-04 11:02:19'),
+  (12,12,12,'2026-11-04 11:02:19'),
+  (13,13,13,'2026-11-04 11:02:19'),
+  (14,14,14,'2026-11-04 11:02:19'),
+  (15,15,15,'2026-11-04 11:02:19'),
+  (16,16,16,'2026-11-04 11:02:19'),
+  (17,17,17,'2026-11-04 11:02:19'),
+  (18,18,18,'2026-11-04 11:02:19'),
+  (19,19,19,'2026-11-04 11:02:19'),
+  (20,25,1,'2026-11-04 11:02:19'),
+  (21,27,3,'2026-11-04 11:02:19'),
+  (22,29,6,'2026-11-04 11:02:19'),
+  (23,31,10,'2026-11-04 11:02:19'),
+  (24,33,14,'2026-11-04 11:02:19');
+
+INSERT INTO `cliente_entidad` (`id_cliente`, `id_entidad`, `usuario`, `password_hash`, `fecha_registro`) VALUES
+  (1,1,'leonardo.aguilar','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (1,3,'leonardo.aguilar','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (2,1,'ivan.altamirano','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (2,2,'ivan.altamirano','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (3,1,'hugo.arauz','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (3,3,'hugo.arauz','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (4,4,'hairon.azofeifa','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (5,1,'cristopher.buso','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (6,2,'keity.chavarria','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (6,4,'keity.chavarria','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (7,2,'darlin.chaves','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (7,3,'darlin.chaves','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (8,4,'mariela.chinchilla','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (9,1,'dilan.gonzalez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (9,3,'dilan.gonzalez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (10,2,'reiko.gonzalez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (11,3,'jefferson.granados','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (12,2,'hugo.gurdian','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (12,4,'hugo.gurdian','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (13,1,'john.marin','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (14,1,'kendall.montero','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (14,2,'kendall.montero','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (15,1,'cristopher.mora','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (15,3,'cristopher.mora','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (16,4,'camila.mora','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (17,1,'jandany.moya','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (18,2,'astrid.munguia','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (18,4,'astrid.munguia','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (19,3,'lucia.palacio','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (20,4,'diego.pastran','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (21,1,'steven.ramirez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (21,3,'steven.ramirez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (22,1,'scarlette.rosales','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (22,2,'scarlette.rosales','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (23,3,'bayron.sanchez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),
+  (24,4,'diego.sanchez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19');
+
+INSERT INTO `historial_afiliacion` (`id_historial`, `id_telefono`, `id_cuenta`, `accion`, `fecha_evento`) VALUES
+  (1,1,1,'AFILIACION','2026-11-04 11:02:19'),
+  (2,2,2,'AFILIACION','2026-11-04 11:02:19'),
+  (3,3,3,'AFILIACION','2026-11-04 11:02:19'),
+  (4,4,4,'AFILIACION','2026-11-04 11:02:19'),
+  (5,5,5,'AFILIACION','2026-11-04 11:02:19'),
+  (6,6,6,'AFILIACION','2026-11-04 11:02:19'),
+  (7,7,7,'AFILIACION','2026-11-04 11:02:19'),
+  (8,8,8,'AFILIACION','2026-11-04 11:02:19'),
+  (9,9,9,'AFILIACION','2026-11-04 11:02:19'),
+  (10,10,10,'AFILIACION','2026-11-04 11:02:19'),
+  (11,11,11,'AFILIACION','2026-11-04 11:02:19'),
+  (12,12,12,'AFILIACION','2026-11-04 11:02:19'),
+  (13,13,13,'AFILIACION','2026-11-04 11:02:19'),
+  (14,14,14,'AFILIACION','2026-11-04 11:02:19'),
+  (15,15,15,'AFILIACION','2026-11-04 11:02:19'),
+  (16,16,16,'AFILIACION','2026-11-04 11:02:19'),
+  (17,17,17,'AFILIACION','2026-11-04 11:02:19'),
+  (18,18,18,'AFILIACION','2026-11-04 11:02:19'),
+  (19,19,19,'AFILIACION','2026-11-04 11:02:19'),
+  (20,25,1,'AFILIACION','2026-11-04 11:02:19'),
+  (21,27,3,'AFILIACION','2026-11-04 11:02:19'),
+  (22,29,6,'AFILIACION','2026-11-04 11:02:19'),
+  (23,31,10,'AFILIACION','2026-11-04 11:02:19'),
+  (24,33,14,'AFILIACION','2026-11-04 11:02:19');
+
+INSERT INTO `transferencia` (`id_transferencia`, `id_cuenta_origen`, `id_cuenta_destino`, `monto`, `tipo`, `fecha`, `detalle`) VALUES
+  (1,1,2,5000.00,'IBAN','2026-11-04 11:29:25','prueba');
+
+
+-- ======================================================================
+-- Triggers (created after the data so loading it does not fire them)
+-- ======================================================================
+
+DELIMITER $$
+
+CREATE TRIGGER `trg_validar_afiliacion` BEFORE INSERT ON `afiliacion_sinpe` FOR EACH ROW begin
     declare v_estado varchar(10);
     declare v_moneda char(3);
     declare v_dueno_cuenta int;
@@ -83,274 +384,19 @@ DELIMITER ;;
     if v_dueno_cuenta <> v_dueno_telefono then
         signal sqlstate '45000' set message_text = 'El teléfono y la cuenta son de clientes distintos';
     end if;
-end */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_historial_afiliacion` AFTER INSERT ON `afiliacion_sinpe` FOR EACH ROW begin
+end$$
+
+CREATE TRIGGER `trg_historial_afiliacion` AFTER INSERT ON `afiliacion_sinpe` FOR EACH ROW begin
     insert into historial_afiliacion (id_telefono, id_cuenta, accion)
     values (new.id_telefono, new.id_cuenta, 'AFILIACION');
-end */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_afiliacion_auditar_delete` BEFORE DELETE ON `afiliacion_sinpe` FOR EACH ROW begin
+end$$
+
+CREATE TRIGGER `trg_afiliacion_auditar_delete` BEFORE DELETE ON `afiliacion_sinpe` FOR EACH ROW begin
     insert into historial_afiliacion (id_telefono, id_cuenta, accion)
     values (old.id_telefono, old.id_cuenta, 'DESAFILIACION');
-end */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
+end$$
 
---
--- Table structure for table `cliente`
---
-
-DROP TABLE IF EXISTS `cliente`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `cliente` (
-  `id_cliente` int NOT NULL AUTO_INCREMENT,
-  `identificacion` varchar(20) NOT NULL,
-  `nombres` varchar(80) NOT NULL,
-  `primer_apellido` varchar(60) NOT NULL,
-  `segundo_apellido` varchar(60) NOT NULL,
-  `correo` varchar(120) NOT NULL,
-  `fecha_registro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `estado` enum('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO',
-  PRIMARY KEY (`id_cliente`),
-  UNIQUE KEY `identificacion` (`identificacion`),
-  UNIQUE KEY `correo` (`correo`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `cliente`
---
-
-LOCK TABLES `cliente` WRITE;
-/*!40000 ALTER TABLE `cliente` DISABLE KEYS */;
-INSERT INTO `cliente` VALUES (1,'UCR000001','LEONARDO ANTONIO','AGUILAR','BERROCAL','leonardo.aguilar.berrocal@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(2,'UCR000002','IVAN CALET','ALTAMIRANO','ABARCA','ivan.altamirano.abarca@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(3,'UCR000003','HUGO ARIEL','ARAUZ','MAROTO','hugo.arauz.maroto@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(4,'UCR000004','HAIRON DANIEL','AZOFEIFA','SANCHEZ','hairon.azofeifa.sanchez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(5,'UCR000005','CRISTOPHER EDUARDO','BUSO','BOLAÑOS','cristopher.buso.bolanos@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(6,'UCR000006','KEITY DAYANA','CHAVARRIA','STELLER','keity.chavarria.steller@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(7,'UCR000007','DARLIN PATRICIA','CHAVES','ALVARADO','darlin.chaves.alvarado@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(8,'UCR000008','MARIELA CAROLINA','CHINCHILLA','GONZALEZ','mariela.chinchilla.gonzalez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(9,'UCR000009','DILAN JAVIER','GONZALEZ','BADILLA','dilan.gonzalez.badilla@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(10,'UCR000010','REIKO JISLEN','GONZALEZ','PORTUGUEZ','reiko.gonzalez.portuguez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(11,'UCR000011','JEFFERSON DAVID','GRANADOS','VENEGAS','jefferson.granados.venegas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(12,'UCR000012','HUGO JOSE','GURDIAN','SOLORZANO','hugo.gurdian.solorzano@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(13,'UCR000013','JOHN LEANDRO','MARIN','SALAS','john.marin.salas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(14,'UCR000014','KENDALL NAUM','MONTERO','CORTES','kendall.montero.cortes@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(15,'UCR000015','CRISTOPHER','MORA','SALAS','cristopher.mora.salas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(16,'UCR000016','CAMILA NAHOMI','MORA','VILLALOBOS','camila.mora.villalobos@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(17,'UCR000017','JANDANY','MOYA','GARCIA','jandany.moya.garcia@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(18,'UCR000018','ASTRID VALESKA','MUNGUIA','ROJAS','astrid.munguia.rojas@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(19,'UCR000019','LUCIA MARGARITA','PALACIO','AYERDIS','lucia.palacio.ayerdis@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(20,'UCR000020','DIEGO','PASTRAN','MEDINA','diego.pastran.medina@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(21,'UCR000021','STEVEN GABRIEL','RAMIREZ','PALACIOS','steven.ramirez.palacios@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(22,'UCR000022','SCARLETTE YALENA','ROSALES','PEREZ','scarlette.rosales.perez@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(23,'UCR000023','BAYRON AXEL','SANCHEZ','CONCEPCION','bayron.sanchez.concepcion@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO'),(24,'UCR000024','DIEGO ARANTES','SANCHEZ','LEZAMA','diego.sanchez.lezama@ucr.ac.cr','2026-11-04 11:02:19','ACTIVO');
-/*!40000 ALTER TABLE `cliente` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `cliente_entidad`
---
-
-DROP TABLE IF EXISTS `cliente_entidad`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `cliente_entidad` (
-  `id_cliente` int NOT NULL,
-  `id_entidad` int NOT NULL,
-  `usuario` varchar(50) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
-  `fecha_registro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id_cliente`,`id_entidad`),
-  UNIQUE KEY `uq_cliente_entidad_usuario` (`id_entidad`,`usuario`),
-  CONSTRAINT `fk_ce_cliente` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
-  CONSTRAINT `fk_ce_entidad` FOREIGN KEY (`id_entidad`) REFERENCES `entidad_financiera` (`id_entidad`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `cliente_entidad`
---
-
-LOCK TABLES `cliente_entidad` WRITE;
-/*!40000 ALTER TABLE `cliente_entidad` DISABLE KEYS */;
-INSERT INTO `cliente_entidad` VALUES (1,1,'leonardo.aguilar','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(1,3,'leonardo.aguilar','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(2,1,'ivan.altamirano','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(2,2,'ivan.altamirano','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(3,1,'hugo.arauz','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(3,3,'hugo.arauz','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(4,4,'hairon.azofeifa','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(5,1,'cristopher.buso','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(6,2,'keity.chavarria','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(6,4,'keity.chavarria','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(7,2,'darlin.chaves','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(7,3,'darlin.chaves','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(8,4,'mariela.chinchilla','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(9,1,'dilan.gonzalez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(9,3,'dilan.gonzalez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(10,2,'reiko.gonzalez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(11,3,'jefferson.granados','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(12,2,'hugo.gurdian','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(12,4,'hugo.gurdian','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(13,1,'john.marin','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(14,1,'kendall.montero','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(14,2,'kendall.montero','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(15,1,'cristopher.mora','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(15,3,'cristopher.mora','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(16,4,'camila.mora','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(17,1,'jandany.moya','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(18,2,'astrid.munguia','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(18,4,'astrid.munguia','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(19,3,'lucia.palacio','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(20,4,'diego.pastran','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(21,1,'steven.ramirez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(21,3,'steven.ramirez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(22,1,'scarlette.rosales','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(22,2,'scarlette.rosales','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(23,3,'bayron.sanchez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19'),(24,4,'diego.sanchez','d91c214431b4901a094a503ea26831ce:247d1b52a4d7484fd38d700c55e8a9dcc7281003c6266294c99d09b2e3fee5cd9b8164a7c1b6184cbd4916ca87c56e5473acdc2a7786e9c836c82b9176c35793','2026-11-04 11:02:19');
-/*!40000 ALTER TABLE `cliente_entidad` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `cuenta_iban`
---
-
-DROP TABLE IF EXISTS `cuenta_iban`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `cuenta_iban` (
-  `id_cuenta` int NOT NULL AUTO_INCREMENT,
-  `id_cliente` int NOT NULL,
-  `id_entidad` int NOT NULL,
-  `moneda` char(3) NOT NULL,
-  `iban` char(22) NOT NULL,
-  `saldo` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `estado` enum('ACTIVA','INACTIVA','BLOQUEADA') NOT NULL DEFAULT 'ACTIVA',
-  `fecha_apertura` date NOT NULL,
-  PRIMARY KEY (`id_cuenta`),
-  UNIQUE KEY `iban` (`iban`),
-  KEY `fk_cuenta_cliente` (`id_cliente`),
-  KEY `fk_cuenta_entidad` (`id_entidad`),
-  KEY `fk_cuenta_moneda` (`moneda`),
-  CONSTRAINT `fk_cuenta_cliente` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
-  CONSTRAINT `fk_cuenta_entidad` FOREIGN KEY (`id_entidad`) REFERENCES `entidad_financiera` (`id_entidad`),
-  CONSTRAINT `fk_cuenta_moneda` FOREIGN KEY (`moneda`) REFERENCES `moneda` (`codigo`),
-  CONSTRAINT `chk_cuenta_saldo` CHECK ((`saldo` >= 0))
-) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `cuenta_iban`
---
-
-LOCK TABLES `cuenta_iban` WRITE;
-/*!40000 ALTER TABLE `cuenta_iban` DISABLE KEYS */;
-INSERT INTO `cuenta_iban` VALUES (1,1,1,'CRC','CR12015200000000000001',118991.00,'ACTIVA','2026-01-02'),(2,2,2,'CRC','CR12015100000000000002',202982.00,'ACTIVA','2026-01-03'),(3,3,3,'CRC','CR12016100000000000003',271973.00,'ACTIVA','2026-01-04'),(4,4,4,'CRC','CR12010200000000000004',345964.00,'ACTIVA','2026-01-05'),(5,5,1,'CRC','CR12015200000000000005',419955.00,'ACTIVA','2026-01-06'),(6,6,2,'CRC','CR12015100000000000006',493946.00,'ACTIVA','2026-01-07'),(7,7,3,'CRC','CR12016100000000000007',567937.00,'ACTIVA','2026-01-08'),(8,8,4,'CRC','CR12010200000000000008',641928.00,'ACTIVA','2026-01-09'),(9,9,1,'CRC','CR12015200000000000009',715919.00,'ACTIVA','2026-01-10'),(10,10,2,'CRC','CR12015100000000000010',789910.00,'ACTIVA','2026-01-11'),(11,11,3,'CRC','CR12016100000000000011',63901.00,'ACTIVA','2026-01-12'),(12,12,4,'CRC','CR12010200000000000012',137892.00,'ACTIVA','2026-01-13'),(13,13,1,'CRC','CR12015200000000000013',211883.00,'ACTIVA','2026-01-14'),(14,14,2,'CRC','CR12015100000000000014',285874.00,'ACTIVA','2026-01-15'),(15,15,3,'CRC','CR12016100000000000015',359865.00,'ACTIVA','2026-01-16'),(16,16,4,'CRC','CR12010200000000000016',433856.00,'ACTIVA','2026-01-17'),(17,17,1,'CRC','CR12015200000000000017',507847.00,'ACTIVA','2026-01-18'),(18,18,2,'CRC','CR12015100000000000018',581838.00,'ACTIVA','2026-01-19'),(19,19,3,'CRC','CR12016100000000000019',655829.00,'ACTIVA','2026-01-20'),(20,20,4,'CRC','CR12010200000000000020',729820.00,'ACTIVA','2026-01-21'),(21,21,1,'CRC','CR12015200000000000021',803811.00,'ACTIVA','2026-01-22'),(22,22,2,'CRC','CR12015100000000000022',77802.00,'ACTIVA','2026-01-23'),(23,23,3,'CRC','CR12016100000000000023',151793.00,'ACTIVA','2026-01-24'),(24,24,4,'CRC','CR12010200000000000024',225784.00,'ACTIVA','2026-01-25'),(25,1,3,'USD','CR12016100000000000025',377.00,'ACTIVA','2026-01-26'),(26,3,1,'USD','CR12015200000000000026',631.00,'ACTIVA','2026-01-27'),(27,6,4,'USD','CR12010200000000000027',1012.00,'ACTIVA','2026-01-28'),(28,9,3,'USD','CR12016100000000000028',1393.00,'ACTIVA','2026-01-01'),(29,12,2,'USD','CR12015100000000000029',1774.00,'ACTIVA','2026-01-02'),(30,15,1,'USD','CR12015200000000000030',2155.00,'ACTIVA','2026-01-03'),(31,18,4,'USD','CR12010200000000000031',2536.00,'ACTIVA','2026-01-04'),(32,21,3,'USD','CR12016100000000000032',2917.00,'ACTIVA','2026-01-05'),(33,2,1,'CRC','CR12015200000000000033',45806.00,'ACTIVA','2026-01-06'),(34,7,2,'CRC','CR12015100000000000034',135321.00,'BLOQUEADA','2026-01-07'),(35,14,1,'CRC','CR12015200000000000035',40642.00,'ACTIVA','2026-01-08'),(36,22,1,'CRC','CR12015200000000000036',183866.00,'ACTIVA','2026-01-09');
-/*!40000 ALTER TABLE `cuenta_iban` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `entidad_financiera`
---
-
-DROP TABLE IF EXISTS `entidad_financiera`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `entidad_financiera` (
-  `id_entidad` int NOT NULL AUTO_INCREMENT,
-  `codigo` varchar(12) NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  `codigo_iban` char(3) NOT NULL,
-  `limite_diario_sinpe` decimal(15,2) NOT NULL DEFAULT '200000.00',
-  PRIMARY KEY (`id_entidad`),
-  UNIQUE KEY `codigo` (`codigo`),
-  UNIQUE KEY `nombre` (`nombre`),
-  UNIQUE KEY `codigo_iban` (`codigo_iban`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `entidad_financiera`
---
-
-LOCK TABLES `entidad_financiera` WRITE;
-/*!40000 ALTER TABLE `entidad_financiera` DISABLE KEYS */;
-INSERT INTO `entidad_financiera` VALUES (1,'BCR','Banco de Costa Rica','152',200000.00),(2,'BN','Banco Nacional de Costa Rica','151',200000.00),(3,'BP','Banco Popular y de Desarrollo Comunal','161',200000.00),(4,'BAC','BAC Credomatic','102',200000.00);
-/*!40000 ALTER TABLE `entidad_financiera` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `historial_afiliacion`
---
-
-DROP TABLE IF EXISTS `historial_afiliacion`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `historial_afiliacion` (
-  `id_historial` bigint NOT NULL AUTO_INCREMENT,
-  `id_telefono` int NOT NULL,
-  `id_cuenta` int NOT NULL,
-  `accion` enum('AFILIACION','DESAFILIACION') NOT NULL,
-  `fecha_evento` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id_historial`),
-  KEY `fk_historial_telefono` (`id_telefono`),
-  KEY `fk_historial_cuenta` (`id_cuenta`),
-  CONSTRAINT `fk_historial_cuenta` FOREIGN KEY (`id_cuenta`) REFERENCES `cuenta_iban` (`id_cuenta`),
-  CONSTRAINT `fk_historial_telefono` FOREIGN KEY (`id_telefono`) REFERENCES `telefono_cliente` (`id_telefono`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `historial_afiliacion`
---
-
-LOCK TABLES `historial_afiliacion` WRITE;
-/*!40000 ALTER TABLE `historial_afiliacion` DISABLE KEYS */;
-INSERT INTO `historial_afiliacion` VALUES (1,1,1,'AFILIACION','2026-11-04 11:02:19'),(2,2,2,'AFILIACION','2026-11-04 11:02:19'),(3,3,3,'AFILIACION','2026-11-04 11:02:19'),(4,4,4,'AFILIACION','2026-11-04 11:02:19'),(5,5,5,'AFILIACION','2026-11-04 11:02:19'),(6,6,6,'AFILIACION','2026-11-04 11:02:19'),(7,7,7,'AFILIACION','2026-11-04 11:02:19'),(8,8,8,'AFILIACION','2026-11-04 11:02:19'),(9,9,9,'AFILIACION','2026-11-04 11:02:19'),(10,10,10,'AFILIACION','2026-11-04 11:02:19'),(11,11,11,'AFILIACION','2026-11-04 11:02:19'),(12,12,12,'AFILIACION','2026-11-04 11:02:19'),(13,13,13,'AFILIACION','2026-11-04 11:02:19'),(14,14,14,'AFILIACION','2026-11-04 11:02:19'),(15,15,15,'AFILIACION','2026-11-04 11:02:19'),(16,16,16,'AFILIACION','2026-11-04 11:02:19'),(17,17,17,'AFILIACION','2026-11-04 11:02:19'),(18,18,18,'AFILIACION','2026-11-04 11:02:19'),(19,19,19,'AFILIACION','2026-11-04 11:02:19'),(20,25,1,'AFILIACION','2026-11-04 11:02:19'),(21,27,3,'AFILIACION','2026-11-04 11:02:19'),(22,29,6,'AFILIACION','2026-11-04 11:02:19'),(23,31,10,'AFILIACION','2026-11-04 11:02:19'),(24,33,14,'AFILIACION','2026-11-04 11:02:19');
-/*!40000 ALTER TABLE `historial_afiliacion` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `moneda`
---
-
-DROP TABLE IF EXISTS `moneda`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `moneda` (
-  `codigo` char(3) NOT NULL,
-  `descripcion` varchar(40) NOT NULL,
-  PRIMARY KEY (`codigo`),
-  UNIQUE KEY `descripcion` (`descripcion`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `moneda`
---
-
-LOCK TABLES `moneda` WRITE;
-/*!40000 ALTER TABLE `moneda` DISABLE KEYS */;
-INSERT INTO `moneda` VALUES ('CRC','Colón costarricense'),('USD','Dólar estadounidense');
-/*!40000 ALTER TABLE `moneda` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `telefono_cliente`
---
-
-DROP TABLE IF EXISTS `telefono_cliente`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `telefono_cliente` (
-  `id_telefono` int NOT NULL AUTO_INCREMENT,
-  `id_cliente` int NOT NULL,
-  `numero` varchar(8) NOT NULL,
-  `fecha_registro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id_telefono`),
-  UNIQUE KEY `numero` (`numero`),
-  KEY `fk_telefono_cliente` (`id_cliente`),
-  CONSTRAINT `fk_telefono_cliente` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
-  CONSTRAINT `chk_telefono_formato` CHECK (regexp_like(`numero`,_utf8mb4'^[0-9]{8}$'))
-) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `telefono_cliente`
---
-
-LOCK TABLES `telefono_cliente` WRITE;
-/*!40000 ALTER TABLE `telefono_cliente` DISABLE KEYS */;
-INSERT INTO `telefono_cliente` VALUES (1,1,'80000001','2026-11-04 11:02:19'),(2,2,'80000002','2026-11-04 11:02:19'),(3,3,'80000003','2026-11-04 11:02:19'),(4,4,'80000004','2026-11-04 11:02:19'),(5,5,'80000005','2026-11-04 11:02:19'),(6,6,'80000006','2026-11-04 11:02:19'),(7,7,'80000007','2026-11-04 11:02:19'),(8,8,'80000008','2026-11-04 11:02:19'),(9,9,'80000009','2026-11-04 11:02:19'),(10,10,'80000010','2026-11-04 11:02:19'),(11,11,'80000011','2026-11-04 11:02:19'),(12,12,'80000012','2026-11-04 11:02:19'),(13,13,'80000013','2026-11-04 11:02:19'),(14,14,'80000014','2026-11-04 11:02:19'),(15,15,'80000015','2026-11-04 11:02:19'),(16,16,'80000016','2026-11-04 11:02:19'),(17,17,'80000017','2026-11-04 11:02:19'),(18,18,'80000018','2026-11-04 11:02:19'),(19,19,'80000019','2026-11-04 11:02:19'),(20,20,'80000020','2026-11-04 11:02:19'),(21,21,'80000021','2026-11-04 11:02:19'),(22,22,'80000022','2026-11-04 11:02:19'),(23,23,'80000023','2026-11-04 11:02:19'),(24,24,'80000024','2026-11-04 11:02:19'),(25,1,'70000001','2026-11-04 11:02:19'),(26,2,'70000002','2026-11-04 11:02:19'),(27,3,'70000003','2026-11-04 11:02:19'),(28,5,'70000005','2026-11-04 11:02:19'),(29,6,'70000006','2026-11-04 11:02:19'),(30,8,'70000008','2026-11-04 11:02:19'),(31,10,'70000010','2026-11-04 11:02:19'),(32,12,'70000012','2026-11-04 11:02:19'),(33,14,'70000014','2026-11-04 11:02:19'),(34,16,'70000016','2026-11-04 11:02:19'),(35,18,'70000018','2026-11-04 11:02:19'),(36,20,'70000020','2026-11-04 11:02:19'),(37,22,'70000022','2026-11-04 11:02:19'),(38,24,'70000024','2026-11-04 11:02:19');
-/*!40000 ALTER TABLE `telefono_cliente` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_telefono_validar_insert` BEFORE INSERT ON `telefono_cliente` FOR EACH ROW begin
+CREATE TRIGGER `trg_telefono_validar_insert` BEFORE INSERT ON `telefono_cliente` FOR EACH ROW begin
     declare v_estado varchar(10);
 
     select estado into v_estado
@@ -359,22 +405,9 @@ DELIMITER ;;
     if v_estado = 'INACTIVO' then
         signal sqlstate '45000' set message_text = 'Este cliente está inactivo';
     end if;
-end */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_telefono_validar_update` BEFORE UPDATE ON `telefono_cliente` FOR EACH ROW begin
+end$$
+
+CREATE TRIGGER `trg_telefono_validar_update` BEFORE UPDATE ON `telefono_cliente` FOR EACH ROW begin
     declare v_afiliacion int;
 
     select id_afiliacion into v_afiliacion
@@ -384,55 +417,9 @@ DELIMITER ;;
     if old.id_cliente != new.id_cliente and v_afiliacion is not null then
         signal sqlstate '45000' set message_text = 'No se puede cambiar el titular de un teléfono afiliado';
     end if;
-end */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
+end$$
 
---
--- Table structure for table `transferencia`
---
-
-DROP TABLE IF EXISTS `transferencia`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `transferencia` (
-  `id_transferencia` bigint NOT NULL AUTO_INCREMENT,
-  `id_cuenta_origen` int NOT NULL,
-  `id_cuenta_destino` int NOT NULL,
-  `monto` decimal(15,2) NOT NULL,
-  `tipo` enum('SINPE_MOVIL','IBAN') NOT NULL,
-  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `detalle` varchar(100) DEFAULT NULL,
-  PRIMARY KEY (`id_transferencia`),
-  KEY `fk_transferencia_origen` (`id_cuenta_origen`),
-  KEY `fk_transferencia_destino` (`id_cuenta_destino`),
-  CONSTRAINT `fk_transferencia_destino` FOREIGN KEY (`id_cuenta_destino`) REFERENCES `cuenta_iban` (`id_cuenta`),
-  CONSTRAINT `fk_transferencia_origen` FOREIGN KEY (`id_cuenta_origen`) REFERENCES `cuenta_iban` (`id_cuenta`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `transferencia`
---
-
-LOCK TABLES `transferencia` WRITE;
-/*!40000 ALTER TABLE `transferencia` DISABLE KEYS */;
-INSERT INTO `transferencia` VALUES (1,1,2,5000.00,'IBAN','2026-11-04 11:29:25','prueba');
-/*!40000 ALTER TABLE `transferencia` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_transferencia_validar` BEFORE INSERT ON `transferencia` FOR EACH ROW begin
+CREATE TRIGGER `trg_transferencia_validar` BEFORE INSERT ON `transferencia` FOR EACH ROW begin
     if new.monto <= 0 then
         signal sqlstate '45000' set message_text = 'El monto debe ser positivo';
     end if;
@@ -440,60 +427,17 @@ DELIMITER ;;
     if new.id_cuenta_origen = new.id_cuenta_destino then
         signal sqlstate '45000' set message_text = 'No se puede transferir a la misma cuenta';
     end if;
-end */;;
+end$$
+
 DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `transferencia_sinpe`
---
+-- ======================================================================
+-- Stored procedures
+-- ======================================================================
 
-DROP TABLE IF EXISTS `transferencia_sinpe`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `transferencia_sinpe` (
-  `id_transferencia` bigint NOT NULL,
-  `id_telefono_origen` int DEFAULT NULL,
-  `id_telefono_destino` int NOT NULL,
-  PRIMARY KEY (`id_transferencia`),
-  KEY `fk_ts_telefono_origen` (`id_telefono_origen`),
-  KEY `fk_ts_telefono_destino` (`id_telefono_destino`),
-  CONSTRAINT `fk_ts_telefono_destino` FOREIGN KEY (`id_telefono_destino`) REFERENCES `telefono_cliente` (`id_telefono`),
-  CONSTRAINT `fk_ts_telefono_origen` FOREIGN KEY (`id_telefono_origen`) REFERENCES `telefono_cliente` (`id_telefono`),
-  CONSTRAINT `fk_ts_transferencia` FOREIGN KEY (`id_transferencia`) REFERENCES `transferencia` (`id_transferencia`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+DELIMITER $$
 
---
--- Dumping data for table `transferencia_sinpe`
---
-
-LOCK TABLES `transferencia_sinpe` WRITE;
-/*!40000 ALTER TABLE `transferencia_sinpe` DISABLE KEYS */;
-/*!40000 ALTER TABLE `transferencia_sinpe` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Dumping events for database 'sinpe_movil'
---
-
---
--- Dumping routines for database 'sinpe_movil'
---
-/*!50003 DROP PROCEDURE IF EXISTS `sp_afiliar_sinpe` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_afiliar_sinpe`(in p_id_entidad int, in p_id_telefono int, in p_id_cuenta int)
+CREATE PROCEDURE `sp_afiliar_sinpe`(in p_id_entidad int, in p_id_telefono int, in p_id_cuenta int)
 begin
     declare v_dueno_telefono int;
     declare v_dueno_cuenta int;
@@ -560,23 +504,9 @@ begin
 
     insert into afiliacion_sinpe (id_telefono, id_cuenta)
     values (p_id_telefono, p_id_cuenta);
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_cambiar_cuenta_sinpe` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_cambiar_cuenta_sinpe`(
+end$$
+
+CREATE PROCEDURE `sp_cambiar_cuenta_sinpe`(
     in p_id_entidad      int,
     in p_id_telefono     int,
     in p_id_cuenta_nueva int
@@ -621,23 +551,9 @@ begin
     values (p_id_telefono, p_id_cuenta_nueva);
 
     commit;
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_cambiar_estado_cuenta` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_cambiar_estado_cuenta`(
+end$$
+
+CREATE PROCEDURE `sp_cambiar_estado_cuenta`(
     in p_id_entidad int,
     in p_iban       varchar(30),
     in p_estado     varchar(10)
@@ -680,23 +596,9 @@ begin
     update cuenta_iban set estado = p_estado where id_cuenta = v_id_cuenta;
 
     commit;
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_cambiar_titular_telefono` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_cambiar_titular_telefono`(
+end$$
+
+CREATE PROCEDURE `sp_cambiar_titular_telefono`(
     in p_id_entidad           int,
     in p_numero               varchar(8),
     in p_identificacion_nueva varchar(20)
@@ -737,23 +639,9 @@ begin
     end if;
 
     update telefono_cliente set id_cliente = v_id_cliente where numero = p_numero;
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_consultar_movimientos` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_consultar_movimientos`(
+end$$
+
+CREATE PROCEDURE `sp_consultar_movimientos`(
     in p_id_cliente   int,
     in p_id_entidad   int,
     in p_iban         varchar(22),
@@ -794,23 +682,9 @@ begin
     from transferencia t
     where (t.id_cuenta_origen = v_id_cuenta or t.id_cuenta_destino = v_id_cuenta)
       and date(t.fecha) between p_fecha_inicio and p_fecha_fin;
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_desafiliar_sinpe` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_desafiliar_sinpe`(in p_id_entidad int, in p_numero varchar(20))
+end$$
+
+CREATE PROCEDURE `sp_desafiliar_sinpe`(in p_id_entidad int, in p_numero varchar(20))
 begin
     declare v_id_telefono int;
     declare v_id_afiliacion int;
@@ -846,23 +720,9 @@ begin
     where id_afiliacion = v_id_afiliacion;
 
     commit;
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_registrar_cliente` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_registrar_cliente`(
+end$$
+
+CREATE PROCEDURE `sp_registrar_cliente`(
     in p_id_entidad       int,
     in p_identificacion   varchar(20),
     in p_nombres          varchar(80),
@@ -929,23 +789,9 @@ begin
     values (v_id_cliente, p_id_entidad, p_usuario, p_password_hash);
 
     commit;
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_registrar_cuenta` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_registrar_cuenta`(
+end$$
+
+CREATE PROCEDURE `sp_registrar_cuenta`(
     in  p_id_entidad     int,
     in  p_id_cliente     int,
     in  p_moneda         char(3),
@@ -1000,23 +846,9 @@ begin
     insert into cuenta_iban (id_cliente, id_entidad, moneda, iban, saldo, fecha_apertura)
     values (p_id_cliente, p_id_entidad, p_moneda, p_iban, p_saldo,
             coalesce(p_fecha_apertura, curdate()));
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_registrar_telefono` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_registrar_telefono`(in p_id_entidad int, in p_id_cliente int, in p_numero varchar(8))
+end$$
+
+CREATE PROCEDURE `sp_registrar_telefono`(in p_id_entidad int, in p_id_cliente int, in p_numero varchar(8))
 begin
     declare v_dueno int;
 
@@ -1046,23 +878,9 @@ begin
     end if;
 
     insert into telefono_cliente (id_cliente, numero) values (p_id_cliente, p_numero);
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_transferir_iban` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_transferir_iban`(
+end$$
+
+CREATE PROCEDURE `sp_transferir_iban`(
     in p_id_entidad              int,
     in p_id_cliente              int,
     in p_iban_origen             varchar(30),
@@ -1153,23 +971,9 @@ begin
         values (v_id_origen, v_id_destino, p_monto, 'IBAN', nullif(trim(p_detalle), ''));
 
     commit;
-end ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_transferir_sinpe` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_transferir_sinpe`(
+end$$
+
+CREATE PROCEDURE `sp_transferir_sinpe`(
     in p_id_entidad      int,
     in p_id_cliente      int,
     in p_iban_origen     varchar(30),
@@ -1297,20 +1101,6 @@ begin
     values (last_insert_id(), v_tel_origen, v_tel_destino);
 
     commit;
-end ;;
+end$$
+
 DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2026-11-11 11:34:39
