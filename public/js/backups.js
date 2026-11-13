@@ -15,6 +15,13 @@ const OPERATIONS = {
   PROGRAMACION: 'Programación',
 };
 
+// Automatic refresh after a scheduled backup (see armAutoRefresh).
+const AFTER_RUN_MS = 3000; // mysqldump takes well under a second; this leaves room for it
+const RETRY_MS = 3000;
+const MAX_RETRIES = 10;
+const MAX_TIMEOUT_MS = 2 ** 31 - 1; // longest setTimeout (~24.8 days; monthly runs can be longer)
+let refreshTimer = null;
+
 const scheduleForm = $('schedule-form');
 const scheduleAlert = $('schedule-alert');
 const restoreForm = $('restore-form');
@@ -39,6 +46,10 @@ restoreForm.addEventListener('submit', restore);
 runButton.addEventListener('click', backupNow);
 $('upload-button').addEventListener('click', () => uploadInput.click());
 uploadInput.addEventListener('change', upload);
+// Back on the tab after a while (a backup made from another tab, or a run missed while hidden).
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) load();
+});
 
 await load({ fillForm: true });
 
@@ -123,8 +134,54 @@ function render(status, select) {
   );
 
   for (const button of document.querySelectorAll('button')) {
-    if (button.closest('.app-header')) continue;
+    // A button whose action is still running stays disabled until it ends (see busy()).
+    if (button.closest('.app-header') || button.dataset.busy) continue;
     button.disabled = !status.configured;
+  }
+
+  armAutoRefresh(status.nextRun);
+}
+
+// ---------- Automatic refresh ----------
+// The page asks the server again right after each scheduled backup, so the new file and history
+// row appear without reloading. It does not poll: every request renews the session, and constant
+// polling would keep an idle session alive forever.
+
+function armAutoRefresh(nextRun) {
+  clearTimeout(refreshTimer);
+  if (!nextRun) return;
+  const wait = new Date(nextRun).getTime() + AFTER_RUN_MS - Date.now();
+  refreshTimer = setTimeout(
+    () => (wait > MAX_TIMEOUT_MS ? armAutoRefresh(nextRun) : refreshAfterRun(nextRun)),
+    Math.min(Math.max(wait, 0), MAX_TIMEOUT_MS),
+  );
+}
+
+/** Reloads until the history shows the automatic backup scheduled for `runAt`, then reports it. */
+async function refreshAfterRun(runAt, attempt = 1) {
+  let status;
+  try {
+    status = await api('/api/backups');
+  } catch {
+    if (attempt < MAX_RETRIES)
+      refreshTimer = setTimeout(() => refreshAfterRun(runAt, attempt + 1), RETRY_MS);
+    return;
+  }
+  const entry = status.history.find(
+    (item) => item.type === 'AUTOMATICO' && new Date(item.date) >= new Date(runAt),
+  );
+  if (!entry && attempt < MAX_RETRIES) {
+    refreshTimer = setTimeout(() => refreshAfterRun(runAt, attempt + 1), RETRY_MS);
+    return;
+  }
+  render(status); // also arms the refresh for the next scheduled backup
+  if (!entry) return;
+  if (entry.ok) {
+    pageAlert.hidden = true;
+    showOk(`Respaldo automático creado: ${entry.file} (${formatSize(entry.size)}).`);
+  } else {
+    pageOk.hidden = true;
+    showPageError(`El respaldo automático falló: ${entry.detail}`);
   }
 }
 
@@ -252,11 +309,13 @@ async function restore(event) {
 async function busy(button, text, work) {
   const label = button.textContent;
   button.disabled = true;
+  button.dataset.busy = 'true'; // render() leaves it disabled meanwhile
   button.textContent = text;
   try {
     await work();
   } finally {
     button.textContent = label;
+    delete button.dataset.busy;
     button.disabled = false;
   }
 }
