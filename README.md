@@ -176,7 +176,7 @@ por un procedimiento.
    | `APP_PASSWORD_HASH`  | Ver el paso 6                                         |
    | `BACKUP_DB_USER`     | `root` (módulo Respaldos; vacío lo desactiva)         |
    | `BACKUP_DB_PASSWORD` | Contraseña de ese usuario de MySQL                    |
-   | `MYSQL_BIN_DIR`      | `C:\Program Files\MySQL\MySQL Server 8.0\bin`       |
+   | `MYSQL_BIN_DIR`      | `C:\Program Files\MySQL\MySQL Server 8.0\bin`         |
    | `BACKUP_DIR`         | `respaldos`                                           |
 
    Para generar `SESSION_SECRET`:
@@ -324,6 +324,8 @@ del banco si están afiliados en otro). **Registrar teléfono** agrega un númer
 **Afiliar a SINPE** (en cada número sin afiliar) abre una ventana para elegir una de sus cuentas en
 colones y ACTIVAS de este banco; al confirmar, el número queda afiliado, igual que si lo hiciera el
 administrador. Si el número ya está afiliado en otro banco, debe desafiliarse allá primero.
+**Desafiliar** (en cada número afiliado en este banco) pide confirmación y quita la afiliación; el
+evento queda en el historial. Un número afiliado en otro banco solo se desafilia entrando a ese banco.
 
 **Transferir** (tres pasos: Datos → Revisión → Comprobante)
 
@@ -361,7 +363,7 @@ Se actualiza al cambiar cualquier filtro.
 | Un número tiene 8 dígitos, es único en el sistema y tiene un solo dueño                     | `UNIQUE` + `CHECK` + `sp_registrar_telefono`     |
 | Registrar un teléfono no lo afilia                                                          | `sp_registrar_telefono`                          |
 | Se afilia a una cuenta del mismo dueño, ACTIVA y en colones, del banco de la sesión         | `sp_afiliar_sinpe`, `trg_validar_afiliacion`     |
-| Afilian el administrador o el propio cliente (solo sus números y sus cuentas)               | `sp_afiliar_sinpe` + revisión del servidor       |
+| Afilian y desafilian el administrador o el propio cliente (solo sus números y cuentas)      | `sp_afiliar_sinpe` + revisión del servidor       |
 | Un número está afiliado a una sola cuenta en todo el sistema; una cuenta puede tener varios | `UNIQUE(id_telefono)`                            |
 | Si está afiliado en otro banco, debe desafiliarse allá primero                              | `sp_afiliar_sinpe`                               |
 | Solo el banco que tiene la afiliación puede quitarla o cambiarla                            | `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe` |

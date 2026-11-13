@@ -15,7 +15,12 @@ const enrollDialog = document.getElementById('enroll-dialog');
 const enrollForm = document.getElementById('enroll-form');
 const enrollAlert = enrollForm.querySelector('.alert');
 
+const unenrollDialog = document.getElementById('unenroll-dialog');
+const unenrollForm = document.getElementById('unenroll-form');
+const unenrollAlert = unenrollForm.querySelector('.alert');
+
 let enrollNumber = null; // number shown in the "Afiliar a SINPE Móvil" modal
+let unenrollNumber = null; // number shown in the "Desafiliar" modal
 
 const user = await initLayout('my-phones', 'CLIENTE');
 // defaultValue survives form.reset().
@@ -23,7 +28,10 @@ form.elements.owner.defaultValue = user.displayName;
 window.addEventListener('hashchange', showView);
 form.addEventListener('submit', onSubmit);
 enrollForm.addEventListener('submit', onEnroll);
-enrollDialog.querySelector('[data-close]').addEventListener('click', () => enrollDialog.close());
+unenrollForm.addEventListener('submit', onUnenroll);
+for (const dialog of [enrollDialog, unenrollDialog]) {
+  dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
+}
 // "Input fields take digits only."
 form.elements.number.addEventListener('input', (event) => {
   event.target.value = event.target.value.replace(/\D/g, '');
@@ -51,17 +59,23 @@ function enrolledAccount(phone) {
   return el('span', { class: 'entity-line' }, 'Otra entidad', entityBadge(phone.enrolledBankCode));
 }
 
-// Only a number not enrolled anywhere can be enrolled here; one enrolled in another entity must
-// be unenrolled there first (sp_afiliar_sinpe says so if it is tried anyway).
-function actions(phone) {
-  if (phone.enrolled) return '';
-  const chip = el(
-    'button',
-    { type: 'button', class: 'chip', 'aria-label': `Afiliar ${formatPhone(phone.number)}` },
-    'Afiliar a SINPE',
-  );
-  chip.addEventListener('click', () => openEnroll(phone.number));
+function actionChip(text, label, onClick) {
+  const chip = el('button', { type: 'button', class: 'chip', 'aria-label': label }, text);
+  chip.addEventListener('click', onClick);
   return chip;
+}
+
+// Not enrolled: Afiliar. Enrolled here: Desafiliar. Enrolled in another entity: nothing, since
+// only that entity can remove it (as in real banking; the procedures enforce it anyway).
+function actions(phone) {
+  const shown = formatPhone(phone.number);
+  if (!phone.enrolled) {
+    return actionChip('Afiliar a SINPE', `Afiliar ${shown}`, () => openEnroll(phone.number));
+  }
+  if (phone.enrolledIban) {
+    return actionChip('Desafiliar', `Desafiliar ${shown}`, () => openUnenroll(phone));
+  }
+  return '';
 }
 
 async function loadPhones() {
@@ -168,6 +182,37 @@ async function onEnroll(event) {
     listOk.hidden = false;
   } catch (err) {
     showFormError(enrollForm, enrollAlert, err);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// ---------- "Desafiliar" (modal) ----------
+
+function openUnenroll(phone) {
+  unenrollNumber = phone.number;
+  listOk.hidden = true;
+  clearFormErrors(unenrollForm, unenrollAlert);
+  document.getElementById('unenroll-title').textContent =
+    `¿Desafiliar ${formatPhone(phone.number)} de SINPE Móvil?`;
+  unenrollDialog.querySelector('[data-value="number"]').textContent = formatPhone(phone.number);
+  unenrollDialog.querySelector('[data-value="account"]').textContent = phone.enrolledIban;
+  unenrollDialog.showModal();
+}
+
+async function onUnenroll(event) {
+  event.preventDefault();
+  const button = unenrollForm.querySelector('button[type="submit"]');
+  clearFormErrors(unenrollForm, unenrollAlert);
+  button.disabled = true;
+  try {
+    await api(`/api/me/sinpe/${unenrollNumber}`, { method: 'DELETE' });
+    unenrollDialog.close();
+    await loadPhones();
+    listOk.textContent = `El número ${formatPhone(unenrollNumber)} se desafilió de SINPE Móvil.`;
+    listOk.hidden = false;
+  } catch (err) {
+    showFormError(unenrollForm, unenrollAlert, err);
   } finally {
     button.disabled = false;
   }

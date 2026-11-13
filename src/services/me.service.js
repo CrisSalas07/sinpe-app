@@ -64,6 +64,18 @@ export async function enrollPhone({ entityId, clientId }, { number, iban }) {
   }
 }
 
+/**
+ * The client unenrolls one of their numbers. sp_desafiliar_sinpe checks that it is enrolled and
+ * that the enrollment is in the session entity: only that entity can remove it. The owner of an
+ * enrolled phone cannot change (trg_telefono_validar_update), so this check cannot go stale.
+ */
+export async function unenrollPhone({ entityId, clientId }, number) {
+  if (!(await meRepository.findOwnPhoneId(clientId, number))) {
+    throw new ValidationError('Ese número no está registrado a su nombre.', 'number');
+  }
+  await sinpeService.unenroll(entityId, number);
+}
+
 export async function registerPhone({ entityId, clientId }, number) {
   try {
     await phonesService.register(entityId, clientId, number);
