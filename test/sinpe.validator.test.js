@@ -4,6 +4,7 @@ import { ValidationError } from '../src/utils/errors.js';
 import {
   validateAccountChange,
   validateEnrollment,
+  validateOwnEnrollment,
   validatePhoneIdParam,
 } from '../src/validators/sinpe.validator.js';
 
@@ -44,4 +45,29 @@ test('phone id path parameter', () => {
       'phoneId',
     );
   }
+});
+
+test('a client enrolls one of their numbers with one of their IBANs', () => {
+  assert.deepEqual(validateOwnEnrollment({ number: '60000001', iban: 'cr12015200000000000001' }), {
+    number: '60000001',
+    iban: 'CR12015200000000000001',
+  });
+  const ok = { number: '60000001', iban: 'CR12015200000000000001' };
+  assert.equal(
+    fieldOf(() => validateOwnEnrollment({ ...ok, number: '6000-0001' })),
+    'number',
+  );
+  assert.equal(
+    fieldOf(() => validateOwnEnrollment({ ...ok, iban: 'CR12' })),
+    'iban',
+  );
+  assert.equal(
+    fieldOf(() => validateOwnEnrollment({ number: ok.number })),
+    'iban',
+  );
+  // The owner always comes from the session, never from the request.
+  assert.equal(
+    fieldOf(() => validateOwnEnrollment({ ...ok, clientId: 2 })),
+    'clientId',
+  );
 });

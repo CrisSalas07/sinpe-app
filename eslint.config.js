@@ -7,7 +7,13 @@ const recommended = Object.fromEntries(
     .map(([name]) => [name, 'error']),
 );
 
-const nodeGlobals = { process: 'readonly', console: 'readonly', Buffer: 'readonly' };
+const nodeGlobals = {
+  process: 'readonly',
+  console: 'readonly',
+  Buffer: 'readonly',
+  setTimeout: 'readonly',
+  clearTimeout: 'readonly',
+};
 const browserGlobals = {
   window: 'readonly',
   document: 'readonly',
@@ -17,6 +23,7 @@ const browserGlobals = {
   localStorage: 'readonly',
   URLSearchParams: 'readonly',
   console: 'readonly',
+  Blob: 'readonly',
 };
 
 export default [

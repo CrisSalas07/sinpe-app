@@ -7,6 +7,7 @@ import { requireAuth, requireRole } from './middlewares/auth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { accountsRoutes } from './routes/accounts.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
+import { backupsRoutes } from './routes/backups.routes.js';
 import { catalogsRoutes } from './routes/catalogs.routes.js';
 import { clientsRoutes } from './routes/clients.routes.js';
 import { meRoutes } from './routes/me.routes.js';
@@ -18,6 +19,7 @@ import { ROLES } from './services/auth.service.js';
 
 const SESSION_IDLE_MS = 15 * 60 * 1000;
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH'];
+const RAW_UPLOAD_PATH = '/backups/upload';
 
 export const app = express();
 
@@ -42,8 +44,16 @@ app.use(express.json({ limit: '10kb' }));
 
 // Write endpoints only accept JSON bodies; together with sameSite=strict this blocks form-based CSRF.
 // req.is() is null for body-less requests (e.g. logout), false for a body of another type.
+// The backup upload sends the raw file; an HTML form cannot send application/octet-stream either.
+const isRawUpload = (req) =>
+  req.path === RAW_UPLOAD_PATH && req.is('application/octet-stream') === 'application/octet-stream';
+
 app.use('/api', (req, res, next) => {
-  if (WRITE_METHODS.includes(req.method) && req.is('application/json') === false) {
+  if (
+    WRITE_METHODS.includes(req.method) &&
+    req.is('application/json') === false &&
+    !isRawUpload(req)
+  ) {
     return res.status(415).json({ error: 'Content-Type debe ser application/json' });
   }
   next();
@@ -78,6 +88,7 @@ app.use('/api/sinpe', requireRole(ROLES.ADMIN), sinpeRoutes);
 app.use('/api/me', requireRole(ROLES.CLIENTE), meRoutes);
 app.use('/api/transfers', requireRole(ROLES.CLIENTE), transfersRoutes);
 app.use('/api/reports', requireRole(ROLES.ADMIN), reportsRoutes);
+app.use('/api/backups', requireRole(ROLES.ADMIN), backupsRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
 
 app.use(errorHandler);

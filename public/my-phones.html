@@ -21,7 +21,7 @@
         <section class="card hero">
           <div>
             <h1 class="page-title">Mis teléfonos</h1>
-            <p class="page-sub">Registrar un teléfono no lo afilia a SINPE Móvil.</p>
+            <p class="page-sub">Registre sus números y afílielos o desafílielos de SINPE Móvil.</p>
             <a class="btn btn-primary" href="#registrar">Registrar teléfono</a>
           </div>
         </section>
@@ -36,6 +36,7 @@
                 <th>SINPE Móvil</th>
                 <th>Cuenta afiliada</th>
                 <th>Registrado</th>
+                <th class="col-actions"><span class="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody id="rows"></tbody>
@@ -86,6 +87,57 @@
           </div>
         </form>
       </div>
+
+      <!-- Afiliar a SINPE Móvil (the client enrolls their own number) -->
+      <dialog id="enroll-dialog" class="modal" aria-labelledby="enroll-title">
+        <form id="enroll-form" novalidate>
+          <h2 class="modal-title" id="enroll-title">Afiliar a SINPE Móvil</h2>
+          <p class="page-sub">
+            Los pagos por SINPE Móvil a este número llegarán a la cuenta que elija.
+          </p>
+          <div class="alert alert-bad modal-alert" role="alert" hidden></div>
+          <div class="field modal-field">
+            <label class="label" for="enroll-number">Número</label>
+            <input class="input" id="enroll-number" name="number" readonly />
+            <p class="field-error" hidden></p>
+          </div>
+          <div class="field modal-field">
+            <label class="label" for="enroll-iban">Cuenta</label>
+            <select class="select" id="enroll-iban" name="iban" required></select>
+            <p class="help">Solo cuentas propias en colones y ACTIVAS de esta entidad.</p>
+            <p class="field-error" hidden></p>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" data-close>Cancelar</button>
+            <button class="btn btn-primary" type="submit">Afiliar</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Desafiliar de SINPE Móvil (the client removes their own enrollment in this entity) -->
+      <dialog id="unenroll-dialog" class="modal" aria-labelledby="unenroll-title">
+        <form id="unenroll-form">
+          <h2 class="modal-title" id="unenroll-title"></h2>
+          <p class="page-sub">
+            Dejará de recibir pagos por SINPE Móvil en este número hasta que lo vuelva a afiliar.
+          </p>
+          <div class="alert alert-bad modal-alert" role="alert" hidden></div>
+          <dl class="kv">
+            <div class="kv-row">
+              <dt>Número</dt>
+              <dd data-value="number"></dd>
+            </div>
+            <div class="kv-row">
+              <dt>Cuenta afiliada</dt>
+              <dd data-value="account" class="mono"></dd>
+            </div>
+          </dl>
+          <div class="form-actions">
+            <button class="btn btn-secondary" type="button" data-close>Cancelar</button>
+            <button class="btn btn-primary" type="submit">Desafiliar</button>
+          </div>
+        </form>
+      </dialog>
     </main>
   </body>
 </html>

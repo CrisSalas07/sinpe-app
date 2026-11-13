@@ -103,7 +103,7 @@ select {
   font-weight: 700;
   font-size: 19px;
   line-height: 1.1;
-  color: var(--acc);
+  color: var(--accText);
 }
 
 .brand-sub {
@@ -146,7 +146,8 @@ select {
   max-width: 190px;
   padding: 6px 12px;
   border-radius: var(--r-chip);
-  background: var(--bg);
+  border: 1.5px solid var(--entity, var(--line));
+  background: color-mix(in srgb, var(--entity, var(--bg)) 10%, var(--surf));
   color: var(--ink);
   font-size: 13px;
   font-weight: 600;
@@ -1131,4 +1132,80 @@ fieldset.plain .field:first-child {
 
 .table th.col-actions {
   width: 150px;
+}
+
+/* ---------- Respaldos ---------- */
+/* Dates in the stats panel are text, smaller than the counters of other pages. */
+.stat-value.stat-text {
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+/* Backup file names are long; the full name is in the title. */
+.table td.file-name {
+  max-width: 340px;
+  font-size: 13px;
+}
+
+/* Grid items grow to fit a wide table; min-width: 0 keeps the table scrolling inside its card. */
+.stack > .card:has(.scroll-x) {
+  min-width: 0;
+}
+
+/* The backup folder is a long path without spaces. */
+.path {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .stat-value.stat-text {
+    font-size: 14px;
+    white-space: normal;
+  }
+}
+
+/* ---------- Entity brand colors ---------- */
+/* A band in the second color of the entity's logo (BCR red, BN green, Junta UCR yellow…). */
+:root[data-entity] .app-header,
+:root[data-entity] .login-card {
+  border-top: 4px solid var(--entity-2);
+}
+
+/* Code of an entity ("BN") in its brand color, wherever another entity is named. */
+.entity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--r-chip);
+  background: var(--entity, var(--acc));
+  color: var(--entity-ink, var(--accInk));
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.entity-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The header has no room for a long entity name between the wide and the medium layouts. */
+.entity-short {
+  display: none;
+}
+
+@media (min-width: 1181px) and (max-width: 1440px) {
+  .entity-long {
+    display: none;
+  }
+
+  .entity-short {
+    display: inline;
+  }
 }

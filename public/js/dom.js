@@ -31,6 +31,11 @@ export function icon(name, className = 'icon') {
   return svg;
 }
 
+/** Code of a financial entity ("BCR") in that entity's brand color (see tokens.css). */
+export function entityBadge(code) {
+  return el('span', { class: 'entity-badge', 'data-entity': code }, code);
+}
+
 /** Status tag. kind: 'ok' | 'bad' | 'neutral'. */
 export function tag(text, kind) {
   return el('span', { class: `tag tag-${kind}` }, text);

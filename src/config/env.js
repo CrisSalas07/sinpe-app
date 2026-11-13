@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 // Reads and validates required environment variables once, at startup (fail fast).
 const REQUIRED = [
   'NODE_ENV',
@@ -37,4 +39,13 @@ export const env = {
   sessionSecret: process.env.SESSION_SECRET,
   appUser: process.env.APP_USER,
   appPasswordHash: process.env.APP_PASSWORD_HASH,
+  // Backup module (optional). sinpe_app only has SELECT and EXECUTE, so mysqldump and the restore
+  // run with their own MySQL account (root or one with every privilege on the database).
+  backup: {
+    user: process.env.BACKUP_DB_USER ?? '',
+    password: process.env.BACKUP_DB_PASSWORD ?? '',
+    // Folder with mysqldump.exe and mysql.exe; empty means they are on the PATH.
+    binDir: process.env.MYSQL_BIN_DIR ?? '',
+    dir: path.resolve(process.env.BACKUP_DIR || 'respaldos'),
+  },
 };

@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { clearFormErrors, el, icon, showFormError, tag } from './dom.js';
+import { clearFormErrors, el, entityBadge, icon, showFormError, tag } from './dom.js';
 import {
   accountLabel,
   formatMoney,
@@ -271,7 +271,7 @@ function renderDestination() {
       { class: 'mono acct-iban' },
       type === 'sinpe' ? `Teléfono ${formatPhone(value)}` : value,
     ),
-    el('div', { class: 'tags' }, tag(recipient.entity, 'neutral')),
+    el('div', { class: 'tags' }, entityBadge(recipient.entity)),
   );
 }
 
@@ -366,6 +366,11 @@ function onReview(event) {
   setStep(2);
 }
 
+/** A text followed by the entity code in its brand color. */
+function withEntity(text, code) {
+  return el('span', { class: 'entity-line' }, text, entityBadge(code));
+}
+
 function kvRow(label, value) {
   return el('div', { class: 'kv-row' }, el('dt', {}, label), el('dd', {}, value));
 }
@@ -438,9 +443,12 @@ function showReceipt(result, sentId) {
       kvRow('Tipo', isSinpe ? 'SINPE Móvil' : 'IBAN'),
       kvRow(
         'Origen',
-        `${result.originName} · ${shortIban(result.originIban)} (${result.originEntity})`,
+        withEntity(`${result.originName} · ${shortIban(result.originIban)}`, result.originEntity),
       ),
-      kvRow('Destino', `${result.destinationName} · ${destination} (${result.destinationEntity})`),
+      kvRow(
+        'Destino',
+        withEntity(`${result.destinationName} · ${destination}`, result.destinationEntity),
+      ),
       ...idRow(isSinpe ? '' : sentId),
       ...detailRow(result.detail),
       kvRow('Comisión', money('0')),

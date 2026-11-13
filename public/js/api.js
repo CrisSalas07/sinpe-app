@@ -10,15 +10,22 @@ export class ApiError extends Error {
 
 const LOGIN_ENDPOINT = '/api/auth/login';
 
-/** Calls the API. Resolves with the parsed JSON (null for 204) or throws ApiError. */
+/**
+ * Calls the API. Resolves with the parsed JSON (null for 204) or throws ApiError.
+ * A File/Blob body is sent as is (application/octet-stream): only the backup upload uses it.
+ */
 export async function api(path, { method = 'GET', body } = {}) {
+  const isFile = body instanceof Blob;
   let res;
   try {
     // Writes always declare JSON: browsers send Content-Length: 0 on empty POSTs, which the server treats as a body.
     res = await fetch(path, {
       method,
-      headers: method === 'GET' ? {} : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers:
+        method === 'GET'
+          ? {}
+          : { 'Content-Type': isFile ? 'application/octet-stream' : 'application/json' },
+      body: body === undefined || isFile ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError('No se pudo conectar con el servidor', 0);

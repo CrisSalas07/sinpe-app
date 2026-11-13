@@ -72,6 +72,24 @@ export async function findMovements(entityId, clientId, { iban, from, to }) {
   };
 }
 
+/** Id of a phone, only if it belongs to the client; otherwise null. */
+export async function findOwnPhoneId(clientId, number) {
+  const [rows] = await pool.query(
+    'SELECT id_telefono AS id FROM telefono_cliente WHERE numero = ? AND id_cliente = ?',
+    [number, clientId],
+  );
+  return rows[0]?.id ?? null;
+}
+
+/** Id of an account, only if it belongs to the client in the entity; otherwise null. */
+export async function findOwnAccountId(entityId, clientId, iban) {
+  const [rows] = await pool.query(
+    'SELECT id_cuenta AS id FROM cuenta_iban WHERE iban = ? AND id_cliente = ? AND id_entidad = ?',
+    [iban, clientId, entityId],
+  );
+  return rows[0]?.id ?? null;
+}
+
 /**
  * Phones of the client. As in Teléfonos, the IBAN of an enrollment in another entity stays null:
  * enrolled and enrolledBankCode say where it is.

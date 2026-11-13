@@ -1,6 +1,7 @@
 import * as meService from '../services/me.service.js';
-import { validateNewPhone } from '../validators/phones.validator.js';
+import { validateNewPhone, validatePhoneNumber } from '../validators/phones.validator.js';
 import { validateMovementsQuery } from '../validators/reports.validator.js';
+import { validateOwnEnrollment } from '../validators/sinpe.validator.js';
 
 export async function summary(req, res) {
   res.json(await meService.summary(req.session.user));
@@ -20,6 +21,16 @@ export async function movements(req, res) {
 
 export async function phones(req, res) {
   res.json(await meService.phones(req.session.user));
+}
+
+export async function enrollPhone(req, res) {
+  await meService.enrollPhone(req.session.user, validateOwnEnrollment(req.body));
+  res.status(201).end();
+}
+
+export async function unenrollPhone(req, res) {
+  await meService.unenrollPhone(req.session.user, validatePhoneNumber(req.params.number));
+  res.status(204).end();
 }
 
 export async function createPhone(req, res) {

@@ -8,6 +8,8 @@
   --line: #dcd6f7;
   --acc: #424874;
   --accInk: #ffffff;
+  /* Accent used as text on white (the brand name). */
+  --accText: #424874;
   --ok: #157a4a;
   --okbg: #ddf3e8;
   --bad: #b3261e;
@@ -26,4 +28,49 @@
   --r-btn: 10px;
   --r-input: 9px;
   --r-chip: 20px;
+}
+
+/*
+ * Brand color of each financial entity, taken from its official logo (November 2026):
+ * BCR and BN from their logos on Wikimedia Commons, BP from the logo on bancopopular.fi.cr,
+ * BAC from its logo on Wikimedia Commons, Junta UCR from the theme of juntaucr.com.
+ * --entity: main color. --entity-ink: text on it. --entity-2: second color of the logo.
+ * --entity-text: the main color when it is too light for text on white (BP orange).
+ */
+[data-entity='BCR'] {
+  --entity: #17479e;
+  --entity-ink: #ffffff;
+  --entity-2: #ed1c24;
+}
+
+[data-entity='BN'] {
+  --entity: #22408a;
+  --entity-ink: #ffffff;
+  --entity-2: #afbd36;
+}
+
+[data-entity='BP'] {
+  --entity: #f47920;
+  --entity-ink: #1f1300;
+  --entity-2: #f47920;
+  --entity-text: #b85409;
+}
+
+[data-entity='BAC'] {
+  --entity: #c8102f;
+  --entity-ink: #ffffff;
+  --entity-2: #c8102f;
+}
+
+[data-entity='JUNTAUCR'] {
+  --entity: #075c95;
+  --entity-ink: #ffffff;
+  --entity-2: #fcd42c;
+}
+
+/* The entity of the session (or the one chosen at login) colors the whole app. */
+:root[data-entity] {
+  --acc: var(--entity);
+  --accInk: var(--entity-ink);
+  --accText: var(--entity-text, var(--entity));
 }
