@@ -74,6 +74,12 @@ sinpe-app/
 Petición HTTP → routes → controllers → services → repositories → MySQL (procedimientos y triggers)
 ```
 
+**Colores de cada entidad:** la app toma los colores de la entidad de la sesión (y del login, al
+elegirla): BCR azul `#17479E` y rojo `#ED1C24`, BN azul `#22408A` y verde `#AFBD36`, BP naranja
+`#F47920`, BAC rojo `#C8102F`, Junta UCR azul `#075C95` y amarillo `#FCD42C`, tomados de sus
+logos oficiales. Están en `public/css/tokens.css`. Cuando se nombra otra entidad aparece su código
+en su color.
+
 **Tecnologías:** MySQL 8, Node.js 24, Express 5, `mysql2`, `express-session`, `helmet`,
 `express-rate-limit`. El frontend es HTML, CSS y JavaScript sin frameworks.
 
@@ -313,9 +319,11 @@ Menú: **Inicio · Mis teléfonos · Transferir · Mis movimientos**.
 **Inicio:** saludo, cantidad de cuentas, teléfonos y teléfonos afiliados; tarjetas de las cuentas
 con saldo; los últimos 5 movimientos. Botones para Transferir, Registrar teléfono y Ver todos.
 
-**Mis teléfonos:** sus números, si están afiliados y a qué cuenta (u "Otra entidad (BN)" si están
-afiliados en otro banco). **Registrar teléfono** agrega un número propio; no lo afilia (eso lo hace
-el banco).
+**Mis teléfonos:** sus números, si están afiliados y a qué cuenta (u "Otra entidad" con el código
+del banco si están afiliados en otro). **Registrar teléfono** agrega un número propio; no lo afilia.
+**Afiliar a SINPE** (en cada número sin afiliar) abre una ventana para elegir una de sus cuentas en
+colones y ACTIVAS de este banco; al confirmar, el número queda afiliado, igual que si lo hiciera el
+administrador. Si el número ya está afiliado en otro banco, debe desafiliarse allá primero.
 
 **Transferir** (tres pasos: Datos → Revisión → Comprobante)
 
@@ -353,6 +361,7 @@ Se actualiza al cambiar cualquier filtro.
 | Un número tiene 8 dígitos, es único en el sistema y tiene un solo dueño                     | `UNIQUE` + `CHECK` + `sp_registrar_telefono`     |
 | Registrar un teléfono no lo afilia                                                          | `sp_registrar_telefono`                          |
 | Se afilia a una cuenta del mismo dueño, ACTIVA y en colones, del banco de la sesión         | `sp_afiliar_sinpe`, `trg_validar_afiliacion`     |
+| Afilian el administrador o el propio cliente (solo sus números y sus cuentas)               | `sp_afiliar_sinpe` + revisión del servidor       |
 | Un número está afiliado a una sola cuenta en todo el sistema; una cuenta puede tener varios | `UNIQUE(id_telefono)`                            |
 | Si está afiliado en otro banco, debe desafiliarse allá primero                              | `sp_afiliar_sinpe`                               |
 | Solo el banco que tiene la afiliación puede quitarla o cambiarla                            | `sp_desafiliar_sinpe`, `sp_cambiar_cuenta_sinpe` |

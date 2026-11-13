@@ -1,6 +1,6 @@
 import { api } from './api.js';
-import { clearFormErrors, el, fillRows, showFormError, tag } from './dom.js';
-import { formatPhone } from './format.js';
+import { clearFormErrors, el, entityBadge, fillRows, showFormError, tag } from './dom.js';
+import { accountLabel, formatMoney, formatPhone } from './format.js';
 import { initLayout } from './layout.js';
 
 const listView = document.getElementById('list-view');
@@ -11,12 +11,19 @@ const listOk = document.getElementById('list-ok');
 const form = document.getElementById('phone-form');
 const formAlert = form.querySelector('.alert');
 const submit = form.querySelector('button[type="submit"]');
+const enrollDialog = document.getElementById('enroll-dialog');
+const enrollForm = document.getElementById('enroll-form');
+const enrollAlert = enrollForm.querySelector('.alert');
+
+let enrollNumber = null; // number shown in the "Afiliar a SINPE Móvil" modal
 
 const user = await initLayout('my-phones', 'CLIENTE');
 // defaultValue survives form.reset().
 form.elements.owner.defaultValue = user.displayName;
 window.addEventListener('hashchange', showView);
 form.addEventListener('submit', onSubmit);
+enrollForm.addEventListener('submit', onEnroll);
+enrollDialog.querySelector('[data-close]').addEventListener('click', () => enrollDialog.close());
 // "Input fields take digits only."
 form.elements.number.addEventListener('input', (event) => {
   event.target.value = event.target.value.replace(/\D/g, '');
@@ -40,7 +47,21 @@ function showView() {
 // The IBAN of an enrollment in another entity is not data of this one.
 function enrolledAccount(phone) {
   if (phone.enrolledIban) return phone.enrolledIban; // full IBAN, as in Teléfonos
-  return phone.enrolled ? `Otra entidad (${phone.enrolledBankCode})` : '—';
+  if (!phone.enrolled) return '—';
+  return el('span', { class: 'entity-line' }, 'Otra entidad', entityBadge(phone.enrolledBankCode));
+}
+
+// Only a number not enrolled anywhere can be enrolled here; one enrolled in another entity must
+// be unenrolled there first (sp_afiliar_sinpe says so if it is tried anyway).
+function actions(phone) {
+  if (phone.enrolled) return '';
+  const chip = el(
+    'button',
+    { type: 'button', class: 'chip', 'aria-label': `Afiliar ${formatPhone(phone.number)}` },
+    'Afiliar a SINPE',
+  );
+  chip.addEventListener('click', () => openEnroll(phone.number));
+  return chip;
 }
 
 async function loadPhones() {
@@ -56,6 +77,7 @@ async function loadPhones() {
           el('td', {}, phone.enrolled ? tag('Afiliado', 'ok') : tag('No afiliado', 'neutral')),
           el('td', { class: phone.enrolledIban ? 'mono' : null }, enrolledAccount(phone)),
           el('td', {}, phone.registeredAt.slice(0, 10)),
+          el('td', {}, actions(phone)),
         ),
       ),
       'Sin teléfonos registrados.',
@@ -84,5 +106,69 @@ async function onSubmit(event) {
     showFormError(form, formAlert, err);
   } finally {
     submit.disabled = false;
+  }
+}
+
+// ---------- "Afiliar a SINPE Móvil" (modal) ----------
+
+async function openEnroll(number) {
+  enrollNumber = number;
+  listOk.hidden = true;
+  enrollForm.reset();
+  clearFormErrors(enrollForm, enrollAlert);
+  enrollForm.elements.number.value = formatPhone(number);
+  const select = enrollForm.elements.iban;
+  const button = enrollForm.querySelector('button[type="submit"]');
+  select.replaceChildren(el('option', { value: '' }, 'Cargando…'));
+  button.disabled = true;
+  enrollDialog.showModal();
+
+  try {
+    // SINPE Móvil only pays into ACTIVE accounts in colones; the procedure checks it again.
+    const accounts = (await api('/api/me/accounts')).filter(
+      (account) => account.status === 'ACTIVA' && account.currency === 'CRC',
+    );
+    if (accounts.length === 0) {
+      select.replaceChildren(el('option', { value: '' }, 'Sin cuentas disponibles'));
+      showFormError(enrollForm, enrollAlert, {
+        message: 'No tiene cuentas en colones ACTIVAS en esta entidad.',
+        field: 'iban',
+      });
+      return;
+    }
+    select.replaceChildren(
+      ...accounts.map((account) =>
+        el(
+          'option',
+          { value: account.iban },
+          `${accountLabel(account.iban, account.currency)} · ${formatMoney(account.balance, account.currency)}`,
+        ),
+      ),
+    );
+    button.disabled = false;
+  } catch (err) {
+    select.replaceChildren(el('option', { value: '' }, 'No se pudo cargar'));
+    showFormError(enrollForm, enrollAlert, err);
+  }
+}
+
+async function onEnroll(event) {
+  event.preventDefault();
+  const button = enrollForm.querySelector('button[type="submit"]');
+  clearFormErrors(enrollForm, enrollAlert);
+  button.disabled = true;
+  try {
+    await api('/api/me/sinpe', {
+      method: 'POST',
+      body: { number: enrollNumber, iban: enrollForm.elements.iban.value },
+    });
+    enrollDialog.close();
+    await loadPhones();
+    listOk.textContent = `El número ${formatPhone(enrollNumber)} quedó afiliado a SINPE Móvil.`;
+    listOk.hidden = false;
+  } catch (err) {
+    showFormError(enrollForm, enrollAlert, err);
+  } finally {
+    button.disabled = false;
   }
 }
