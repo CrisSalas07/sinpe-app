@@ -36,6 +36,18 @@ export function nextRun(schedule, now = new Date()) {
   return null;
 }
 
+/**
+ * Date of an automatic backup that should have run while the server was off, or null.
+ * `lastRun` is the last successful automatic backup (null if none): the run due after it, or after
+ * the schedule was saved when there is none, must not be in the past.
+ */
+export function missedRun(schedule, lastRun, now = new Date()) {
+  const since = [lastRun, schedule.updatedAt].filter(Boolean).map((date) => new Date(date));
+  if (!schedule.enabled || since.length === 0) return null;
+  const due = nextRun(schedule, new Date(Math.max(...since)));
+  return due && due <= now ? due : null;
+}
+
 let timer = null;
 let next = null;
 // Changes on every start/stop, so a run that was in progress does not re-arm an old schedule.

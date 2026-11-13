@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { nextRun } from '../src/services/backupScheduler.js';
+import { missedRun, nextRun } from '../src/services/backupScheduler.js';
 
 // Dates are built in local time, like the scheduler, so the tests pass in any time zone.
 const local = (year, month, day, hours = 0, minutes = 0) =>
@@ -37,4 +37,41 @@ test('monthly: this month, the next one, or the last day of a short month', () =
   assert.deepEqual(nextRun(day31, local(2027, 2, 1)), local(2027, 2, 28, 2));
   assert.deepEqual(nextRun(day31, local(2027, 3, 1)), local(2027, 3, 31, 2));
   assert.deepEqual(nextRun(day31, local(2026, 11, 13)), local(2026, 11, 30, 2));
+});
+
+const saved = { ...daily, updatedAt: local(2026, 11, 1, 9).toISOString() };
+
+test('missed run: none when the backups are up to date', () => {
+  const last = local(2026, 11, 13, 2).toISOString();
+  assert.equal(missedRun(saved, last, local(2026, 11, 13, 9)), null);
+  assert.equal(missedRun(saved, last, local(2026, 11, 14, 1, 59)), null);
+});
+
+test('missed run: the first one due after the last backup, if it is in the past', () => {
+  const last = local(2026, 11, 11, 2).toISOString();
+  // Off from the 11th to the 13th: one recovery backup, not one per missed day.
+  assert.deepEqual(missedRun(saved, last, local(2026, 11, 13, 9)), local(2026, 11, 12, 2));
+  assert.deepEqual(missedRun(saved, last, local(2026, 11, 12, 2)), local(2026, 11, 12, 2));
+});
+
+test('missed run: counts from when the schedule was saved', () => {
+  // Never ran: the first one was due the morning after saving it.
+  assert.equal(missedRun(saved, null, local(2026, 11, 1, 23)), null);
+  assert.deepEqual(missedRun(saved, null, local(2026, 11, 3, 8)), local(2026, 11, 2, 2));
+  // A schedule changed after the last backup counts from the change, not from that backup.
+  const weekly = {
+    ...saved,
+    frequency: 'SEMANAL',
+    weekday: 1,
+    updatedAt: local(2026, 11, 13, 9).toISOString(),
+  };
+  assert.equal(
+    missedRun(weekly, local(2026, 11, 1, 2).toISOString(), local(2026, 11, 14, 9)),
+    null,
+  );
+});
+
+test('missed run: none when the schedule is off or was never saved', () => {
+  assert.equal(missedRun({ ...saved, enabled: false }, null, local(2026, 12, 1)), null);
+  assert.equal(missedRun({ ...daily, updatedAt: null }, null, local(2026, 12, 1)), null);
 });
