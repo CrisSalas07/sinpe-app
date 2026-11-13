@@ -34,6 +34,8 @@ export async function initLayout(activePage, role) {
     location.replace(HOME_PAGES[user.role]);
     return new Promise(() => {});
   }
+  // The brand colors of the session entity (tokens.css) apply to the whole page.
+  document.documentElement.dataset.entity = user.entityCode;
   document.body.prepend(buildHeader(activePage, user));
   return user;
 }
@@ -77,7 +79,13 @@ function buildHeader(activePage, user) {
     el(
       'div',
       { class: 'header-actions' },
-      el('span', { class: 'entity-pill' }, `${user.entityName} (${user.entityCode})`),
+      // Full name, or only the code where the header is tight (app.css); the name stays in the title.
+      el(
+        'span',
+        { class: 'entity-pill', title: user.entityName },
+        el('span', { class: 'entity-long' }, `${user.entityName} (${user.entityCode})`),
+        el('span', { class: 'entity-short' }, user.entityCode),
+      ),
       tag(ROLE_LABELS[user.role], 'neutral'),
       el('span', { class: 'header-user' }, user.displayName),
       logoutButton,

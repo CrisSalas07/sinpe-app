@@ -21,14 +21,28 @@ async function loadEntities() {
     const entities = await api('/api/auth/entities');
     entity.replaceChildren(
       ...entities.map((item) =>
-        el('option', { value: item.id, selected: item.code === DEFAULT_ENTITY }, item.name),
+        el(
+          'option',
+          { value: item.id, 'data-code': item.code, selected: item.code === DEFAULT_ENTITY },
+          item.name,
+        ),
       ),
     );
+    showEntityColors();
     submit.disabled = false;
   } catch (err) {
     showError(err.message);
   }
 }
+
+// The page takes the brand colors of the chosen entity (tokens.css).
+function showEntityColors() {
+  const code = entity.selectedOptions[0]?.dataset.code;
+  if (code) document.documentElement.dataset.entity = code;
+  else delete document.documentElement.dataset.entity;
+}
+
+entity.addEventListener('change', showEntityColors);
 
 document.getElementById('show-password').addEventListener('change', (event) => {
   password.type = event.target.checked ? 'text' : 'password';
