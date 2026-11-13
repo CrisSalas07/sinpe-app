@@ -1132,3 +1132,37 @@ fieldset.plain .field:first-child {
 .table th.col-actions {
   width: 150px;
 }
+
+/* ---------- Respaldos ---------- */
+/* Dates in the stats panel are text, smaller than the counters of other pages. */
+.stat-value.stat-text {
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+/* Backup file names are long; the full name is in the title. */
+.table td.file-name {
+  max-width: 340px;
+  font-size: 13px;
+}
+
+/* Grid items grow to fit a wide table; min-width: 0 keeps the table scrolling inside its card. */
+.stack > .card:has(.scroll-x) {
+  min-width: 0;
+}
+
+/* The backup folder is a long path without spaces. */
+.path {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .stat-value.stat-text {
+    font-size: 14px;
+    white-space: normal;
+  }
+}

@@ -55,10 +55,10 @@ sinpe-app/
 │   ├── repositories/           Único lugar con SQL (SELECT y CALL sp_*)
 │   ├── validators/             Validación de entradas (formatos, largos, campos permitidos)
 │   ├── middlewares/            Sesión, roles, límite de intentos de login, manejo de errores
-│   └── utils/                  Errores, hash de contraseñas, formato de nombres
+│   └── utils/                  Errores, hash de contraseñas, nombres, mysqldump/mysql
 ├── public/                     Frontend (HTML + CSS + JavaScript, sin framework)
 │   ├── index.html              Inicio de sesión
-│   ├── clients.html, accounts.html, phones.html, sinpe.html, reports.html   Administrador
+│   ├── clients.html, accounts.html, phones.html, sinpe.html, reports.html, backups.html   Administrador
 │   ├── home.html, my-phones.html, transfers.html, movements.html            Cliente
 │   ├── css/                    tokens.css (colores del diseño) y app.css
 │   └── js/                     Un archivo por página + api.js, dom.js, format.js, layout.js
@@ -168,6 +168,10 @@ por un procedimiento.
    | `SESSION_SECRET`     | Al menos 32 caracteres al azar (ver el comando abajo) |
    | `APP_USER`           | `admin`                                               |
    | `APP_PASSWORD_HASH`  | Ver el paso 6                                         |
+   | `BACKUP_DB_USER`     | `root` (módulo Respaldos; vacío lo desactiva)         |
+   | `BACKUP_DB_PASSWORD` | Contraseña de ese usuario de MySQL                    |
+   | `MYSQL_BIN_DIR`      | `C:\Program Files\MySQL\MySQL Server 8.0\bin`       |
+   | `BACKUP_DIR`         | `respaldos`                                           |
 
    Para generar `SESSION_SECRET`:
    `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
@@ -231,7 +235,7 @@ El encabezado muestra siempre la entidad, el rol y el usuario.
 
 ### Administrador
 
-Menú: **Clientes · Cuentas IBAN · Teléfonos · SINPE Móvil · Informes**. Todas las listas tienen
+Menú: **Clientes · Cuentas IBAN · Teléfonos · SINPE Móvil · Informes · Respaldos**. Todas las listas tienen
 estadísticas arriba y un buscador.
 
 **Clientes**
@@ -280,6 +284,27 @@ estadísticas arriba y un buscador.
 
 - **Afiliaciones de un teléfono:** historial de AFILIACION y DESAFILIACION en cuentas de este banco.
 - **Teléfonos asociados a una cuenta:** números afiliados hoy a una cuenta.
+
+**Respaldos** (Laboratorio Copia de Seguridad, ejercicio 3)
+
+- **Respaldo automático programado:** elija la frecuencia (**Diario**, **Semanal** con el día de
+  la semana o **Mensual** con el día del mes) y la **hora**. Al presionar **Guardar y activar** el
+  respaldo queda programado de inmediato y el panel muestra la fecha del próximo. La programación
+  se guarda y se vuelve a activar sola cuando el servidor arranca. En un mes con menos días (por
+  ejemplo, día 31 en febrero) se respalda el último día del mes.
+- **Respaldar ahora:** crea un respaldo en el momento.
+- Cada respaldo ejecuta `mysqldump` con las mismas opciones del ejercicio 2
+  (`--single-transaction --no-tablespaces --routines --triggers --events --set-gtid-purged=OFF`):
+  estructura, datos, procedimientos, triggers y eventos.
+- **Restaurar:** elija un archivo de la carpeta de respaldos o suba un `.sql` de su computadora
+  (de `mysqldump` o de Workbench), marque la confirmación y presione **Restaurar**. Antes de
+  restaurar se guarda un respaldo de seguridad de los datos actuales. Se rechaza un archivo que no
+  sea un respaldo de MySQL o que tenga un `USE` o un `CREATE/DROP DATABASE` de otra base.
+- **Archivos de respaldo** (con botón Descargar) e **Historial** de respaldos, restauraciones y
+  cambios de programación, con su resultado.
+- Requiere en el `.env`: `BACKUP_DB_USER` y `BACKUP_DB_PASSWORD` (por ejemplo `root`: el usuario
+  `sinpe_app` no tiene permisos para respaldar ni restaurar), `MYSQL_BIN_DIR` (carpeta de
+  `mysqldump.exe`) y `BACKUP_DIR` (carpeta de los respaldos, por defecto `respaldos/`).
 
 ### Cliente
 
@@ -369,6 +394,9 @@ saldo.
 - **Dinero:** nunca se usa como número decimal de JavaScript: viaja como texto y los cálculos de
   pantalla usan céntimos enteros.
 - **Mínimo privilegio:** el usuario `sinpe_app` no puede escribir directamente en las tablas.
+- **Respaldos:** solo el administrador entra al módulo. `mysqldump` y `mysql` se ejecutan sin
+  consola y con lista de argumentos; la contraseña va en un archivo temporal, nunca en la línea
+  de comandos. Los nombres de archivo no pueden salir de la carpeta de respaldos.
 
 ## 9. Scripts y pruebas
 
@@ -391,3 +419,6 @@ saldo.
   IBAN, como en el servicio real; esa consulta no tiene límite de intentos.
 - **Sin comisión:** la comisión se muestra siempre en ₡0 (simplificación del prototipo).
 - **Contraseña temporal:** no se obliga a cambiarla en el primer ingreso.
+- **Respaldo automático:** solo corre mientras el servidor está encendido; si estaba apagado a la
+  hora programada, ese respaldo no se recupera. La hora es la del servidor. Los respaldos no se
+  borran solos.

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Respaldos · JUNTAUCR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap"
+    />
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script type="module" src="/js/backups.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <!-- Laboratorio Copia de Seguridad, ejercicio 3: módulo de respaldo y restauración -->
+      <section class="card hero">
+        <div>
+          <h1 class="page-title">Respaldos</h1>
+          <p class="page-sub">
+            Copia de seguridad de la base <span class="mono" id="database"></span> con mysqldump y
+            restauración desde un archivo .sql.
+          </p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" type="button" id="run-now">Respaldar ahora</button>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-value stat-text" id="stat-state"></div>
+            <div class="stat-label">Respaldo automático</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value stat-text" id="stat-next"></div>
+            <div class="stat-label">Próximo respaldo</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value stat-text" id="stat-last"></div>
+            <div class="stat-label">Último respaldo</div>
+          </div>
+        </div>
+      </section>
+
+      <div id="page-alert" class="alert alert-bad" role="alert" hidden></div>
+      <div id="page-ok" class="alert alert-ok" role="status" hidden></div>
+
+      <div class="stack">
+        <form id="schedule-form" class="card" novalidate>
+          <h2 class="section-title card-title">Respaldo automático programado</h2>
+          <div id="schedule-alert" class="alert alert-bad" role="alert" hidden></div>
+
+          <label class="check">
+            <input type="checkbox" id="enabled" name="enabled" checked />
+            Activar el respaldo automático
+          </label>
+
+          <div class="row-2">
+            <div class="field">
+              <label class="label" for="frequency">Frecuencia</label>
+              <select
+                class="select"
+                id="frequency"
+                name="frequency"
+                aria-describedby="frequency-error"
+              >
+                <option value="DIARIO">Diario</option>
+                <option value="SEMANAL">Semanal</option>
+                <option value="MENSUAL">Mensual</option>
+              </select>
+              <p class="field-error" id="frequency-error" hidden></p>
+            </div>
+            <div class="field">
+              <label class="label" for="time">Hora del respaldo</label>
+              <input
+                class="input"
+                id="time"
+                name="time"
+                type="time"
+                required
+                aria-describedby="time-help time-error"
+              />
+              <p class="help" id="time-help">Hora del servidor, formato de 24 horas.</p>
+              <p class="field-error" id="time-error" hidden></p>
+            </div>
+          </div>
+
+          <div class="field" id="weekday-field" hidden>
+            <label class="label" for="weekday">Día de la semana</label>
+            <select class="select" id="weekday" name="weekday" aria-describedby="weekday-error">
+              <option value="1">Lunes</option>
+              <option value="2">Martes</option>
+              <option value="3">Miércoles</option>
+              <option value="4">Jueves</option>
+              <option value="5">Viernes</option>
+              <option value="6">Sábado</option>
+              <option value="0">Domingo</option>
+            </select>
+            <p class="field-error" id="weekday-error" hidden></p>
+          </div>
+
+          <div class="field" id="day-field" hidden>
+            <label class="label" for="dayOfMonth">Día del mes</label>
+            <select
+              class="select"
+              id="dayOfMonth"
+              name="dayOfMonth"
+              aria-describedby="dayOfMonth-help dayOfMonth-error"
+            ></select>
+            <p class="help" id="dayOfMonth-help">
+              Si el mes tiene menos días, el respaldo se hace el último día del mes.
+            </p>
+            <p class="field-error" id="dayOfMonth-error" hidden></p>
+          </div>
+
+          <p class="help" id="schedule-summary"></p>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Guardar y activar</button>
+          </div>
+        </form>
+
+        <form id="restore-form" class="card" novalidate>
+          <h2 class="section-title card-title">Restaurar la base de datos</h2>
+          <div id="restore-alert" class="alert alert-bad" role="alert" hidden></div>
+
+          <div class="field">
+            <label class="label" for="file">Archivo de respaldo</label>
+            <div class="input-action">
+              <select class="select" id="file" name="file" aria-describedby="file-error"></select>
+              <button class="btn btn-secondary" type="button" id="upload-button">
+                Subir archivo…
+              </button>
+              <input type="file" id="upload-input" accept=".sql" hidden />
+            </div>
+            <p class="help">
+              Respaldos de la carpeta <span class="mono path" id="folder"></span>, o un .sql exportado
+              con mysqldump o Workbench que suba desde su computadora.
+            </p>
+            <p class="field-error" id="file-error" hidden></p>
+          </div>
+
+          <label class="check">
+            <input type="checkbox" id="confirm" name="confirm" />
+            Entiendo que se reemplazarán los datos actuales por los del respaldo.
+          </label>
+          <p class="help">
+            Antes de restaurar se guarda un respaldo de seguridad de los datos actuales.
+          </p>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Restaurar</button>
+          </div>
+        </form>
+
+        <section class="card" aria-labelledby="files-title">
+          <h2 class="section-title card-title" id="files-title">Archivos de respaldo</h2>
+          <div class="scroll-x">
+            <table class="table report-table">
+              <thead>
+                <tr>
+                  <th>Archivo</th>
+                  <th>Fecha</th>
+                  <th>Tamaño</th>
+                  <th><span class="sr-only">Acciones</span></th>
+                </tr>
+              </thead>
+              <tbody id="file-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="history-title">
+          <h2 class="section-title card-title" id="history-title">Historial</h2>
+          <div class="scroll-x">
+            <table class="table report-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Operación</th>
+                  <th>Archivo</th>
+                  <th>Resultado</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody id="history-rows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

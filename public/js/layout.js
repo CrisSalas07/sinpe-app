@@ -9,6 +9,7 @@ const MENUS = {
     { id: 'phones', label: 'Teléfonos', href: '/phones.html' },
     { id: 'sinpe', label: 'SINPE Móvil', href: '/sinpe.html' },
     { id: 'reports', label: 'Informes', href: '/reports.html' },
+    { id: 'backups', label: 'Respaldos', href: '/backups.html' },
   ],
   CLIENTE: [
     { id: 'home', label: 'Inicio', href: '/home.html' },
