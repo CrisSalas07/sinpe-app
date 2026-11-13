@@ -46,8 +46,9 @@ async function withOptionFile(work) {
   ];
   await writeFile(file, `${lines.join('\n')}\n`, { mode: 0o600 });
   try {
-    // --defaults-extra-file must be the first option.
-    return await work(`--defaults-extra-file=${file}`);
+    // --defaults-file (first option) reads only this file: with --defaults-extra-file, a user file
+    // read after it (~/.my.cnf on Linux and macOS) could replace BACKUP_DB_USER.
+    return await work(`--defaults-file=${file}`);
   } finally {
     await rm(file, { force: true });
   }
