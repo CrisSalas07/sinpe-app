@@ -53,10 +53,18 @@ async function withOptionFile(work) {
   }
 }
 
+// MySQL reads the login-path file (.mylogin.cnf, from mysql_config_editor) after every other option
+// file, so a saved root login would replace BACKUP_DB_USER. Pointing it to a file that does not
+// exist turns it off, and only the account of the .env is used.
+const NO_LOGIN_PATH = {
+  ...process.env,
+  MYSQL_TEST_LOGIN_FILE: path.join(os.tmpdir(), `sinpe-no-login-${randomBytes(8).toString('hex')}`),
+};
+
 /** Starts a tool and resolves when it ends with exit code 0; otherwise rejects with its stderr. */
 function run(command, args, stdinFile) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { windowsHide: true });
+    const child = spawn(command, args, { windowsHide: true, env: NO_LOGIN_PATH });
     let stderr = '';
     child.stderr.on('data', (chunk) => {
       if (stderr.length < MAX_STDERR) stderr += chunk;
@@ -111,7 +119,12 @@ export async function restoreDatabase(file) {
   await writeFile(copy, stripDefiners(await readFile(file, 'utf8')), { mode: 0o600 });
   try {
     await withOptionFile((options) =>
-      run(tool('mysql'), [options, '--default-character-set=utf8mb4', env.db.database], copy),
+      // --comments: by default mysql drops the -- comments inside procedure and trigger bodies.
+      run(
+        tool('mysql'),
+        [options, '--comments', '--default-character-set=utf8mb4', env.db.database],
+        copy,
+      ),
     );
   } finally {
     await rm(copy, { force: true });
