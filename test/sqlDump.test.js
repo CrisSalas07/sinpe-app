@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findForeignDatabase, isMysqlDump } from '../src/utils/sqlDump.js';
+import { findForeignDatabase, isMysqlDump, stripDefiners } from '../src/utils/sqlDump.js';
 
 const header = '-- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)\n--\n';
 
@@ -36,4 +36,33 @@ test('another database is reported with its line', () => {
     name: 'otra',
     line: 2,
   });
+});
+
+test('DEFINER clauses are removed from procedures, triggers, views and events', () => {
+  const dump = [
+    'CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_afiliar_sinpe`(in p_id int)',
+    '/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_x` BEFORE INSERT',
+    '/*!50013 DEFINER=`root`@`%` SQL SECURITY DEFINER */',
+    "/*!50001 CREATE ALGORITHM=UNDEFINED DEFINER='admin'@'10.0.0.1' VIEW v AS SELECT 1 */;",
+    '/*!50106 CREATE*/ /*!50117 DEFINER=CURRENT_USER*/ /*!50106 EVENT `e` ON SCHEDULE EVERY 1 DAY',
+    'create definer = root@localhost function f() returns int return 1;',
+  ].join('\n');
+  assert.equal(
+    stripDefiners(dump),
+    [
+      'CREATE PROCEDURE `sp_afiliar_sinpe`(in p_id int)',
+      '/*!50003 CREATE*/ /*!50017 */ /*!50003 TRIGGER `trg_x` BEFORE INSERT',
+      '/*!50013 SQL SECURITY DEFINER */',
+      '/*!50001 CREATE ALGORITHM=UNDEFINED VIEW v AS SELECT 1 */;',
+      '/*!50106 CREATE*/ /*!50117 */ /*!50106 EVENT `e` ON SCHEDULE EVERY 1 DAY',
+      'create function f() returns int return 1;',
+    ].join('\n'),
+  );
+});
+
+test('the data and the procedure bodies are not changed', () => {
+  const sql =
+    "INSERT INTO nota VALUES ('DEFINER=`root`@`localhost`'),('create x');\n" +
+    'SELECT definer FROM information_schema.routines;';
+  assert.equal(stripDefiners(sql), sql);
 });

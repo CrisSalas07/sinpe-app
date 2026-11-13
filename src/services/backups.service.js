@@ -4,7 +4,7 @@ import * as backupsRepository from '../repositories/backups.repository.js';
 import { BusinessError, NotFoundError } from '../utils/errors.js';
 import { dumpDatabase, restoreDatabase } from '../utils/mysqlTools.js';
 import { findForeignDatabase, isMysqlDump } from '../utils/sqlDump.js';
-import { nextScheduledRun, startSchedule, stopSchedule } from './backupScheduler.js';
+import { missedRun, nextScheduledRun, startSchedule, stopSchedule } from './backupScheduler.js';
 
 // Backup and restore module (Laboratorio Copia de Seguridad, exercise 3).
 
@@ -57,8 +57,11 @@ function stamp(date) {
 
 const shorten = (message) => message.slice(0, MAX_DETAIL);
 
-/** Runs mysqldump into a new file and records the result. The caller holds the lock. */
-async function createBackup(type) {
+/**
+ * Runs mysqldump into a new file and records the result. The caller holds the lock.
+ * `note` is added to the history entry (why the backup was made, when it is not obvious).
+ */
+async function createBackup(type, note) {
   assertConfigured();
   await backupsRepository.ensureDir();
   const startedAt = new Date();
@@ -92,12 +95,13 @@ async function createBackup(type) {
     ok: true,
     size,
     durationMs: Date.now() - startedAt.getTime(),
+    ...(note && { detail: note }),
   });
   return { name, size };
 }
 
 /** Backup started by the timer. Errors are recorded in the history, never thrown. */
-async function runAutomaticBackup() {
+async function runAutomaticBackup(note) {
   if (busy) {
     await backupsRepository.addHistory({
       date: new Date().toISOString(),
@@ -110,7 +114,7 @@ async function runAutomaticBackup() {
     return;
   }
   try {
-    await exclusive('un respaldo', () => createBackup(BACKUP_TYPES.AUTOMATICO));
+    await exclusive('un respaldo', () => createBackup(BACKUP_TYPES.AUTOMATICO, note));
   } catch (err) {
     console.error('[respaldo automático]', err.message);
   }
@@ -126,8 +130,20 @@ export async function initBackups() {
     );
     return;
   }
-  startSchedule(schedule, runAutomaticBackup);
+  startSchedule(schedule, () => runAutomaticBackup());
   console.log(`Próximo respaldo automático: ${nextScheduledRun().toLocaleString('es-CR')}`);
+
+  // The server was off when a backup was due: make it now instead of waiting for the next one.
+  const history = await backupsRepository.readHistory();
+  const last = history.find(
+    (entry) => entry.operation === 'RESPALDO' && entry.type === BACKUP_TYPES.AUTOMATICO && entry.ok,
+  );
+  const missed = missedRun(schedule, last?.date ?? null);
+  if (missed) {
+    const when = missed.toLocaleString('es-CR');
+    console.log(`No se hizo el respaldo automático de ${when}: se hace ahora.`);
+    await runAutomaticBackup(`Recupera el de ${when}, que no se hizo porque la app estaba apagada`);
+  }
 }
 
 export async function status() {
@@ -154,7 +170,7 @@ export const currentSchedule = () => backupsRepository.readSchedule();
 export async function updateSchedule(schedule) {
   if (schedule.enabled) assertConfigured();
   await backupsRepository.saveSchedule({ ...schedule, updatedAt: new Date().toISOString() });
-  if (schedule.enabled) startSchedule(schedule, runAutomaticBackup);
+  if (schedule.enabled) startSchedule(schedule, () => runAutomaticBackup());
   else stopSchedule();
   await backupsRepository.addHistory({
     date: new Date().toISOString(),
@@ -196,7 +212,8 @@ async function assertRestorable(name) {
 
 /**
  * Replaces the database with the content of a backup. A safety backup of the current data is made
- * first; if it fails, nothing is restored.
+ * first; if it fails, nothing is restored. If the restore fails halfway (some tables already
+ * replaced), the safety backup is restored at once so the database is never left mixed.
  */
 export function restore(name) {
   assertConfigured();
@@ -207,17 +224,20 @@ export function restore(name) {
     try {
       await restoreDatabase(backupsRepository.filePath(name));
     } catch (err) {
+      const reason = shorten(err.message);
+      const reverted = await revert(safety.name);
+      const outcome = reverted
+        ? `Se revirtió: la base quedó como estaba antes (${safety.name}).`
+        : `No se pudo revertir: restaure ${safety.name} a mano.`;
       await backupsRepository.addHistory({
         date: startedAt.toISOString(),
         operation: 'RESTAURACION',
         type: null,
         file: name,
         ok: false,
-        detail: shorten(err.message),
+        detail: shorten(`${reason} ${outcome}`),
       });
-      throw new BusinessError(
-        `No se pudo restaurar: ${shorten(err.message)}. Los datos anteriores quedaron en ${safety.name}.`,
-      );
+      throw new BusinessError(`No se pudo restaurar: ${reason}. ${outcome}`);
     }
     await backupsRepository.addHistory({
       date: startedAt.toISOString(),
@@ -230,6 +250,17 @@ export function restore(name) {
     });
     return { file: name, safetyBackup: safety.name };
   });
+}
+
+/** Restores the safety backup after a failed restore. True when it worked. */
+async function revert(safetyName) {
+  try {
+    await restoreDatabase(backupsRepository.filePath(safetyName));
+    return true;
+  } catch (err) {
+    console.error('[restauración] no se pudo revertir:', err.message);
+    return false;
+  }
 }
 
 /** Saves a .sql chosen on the administrator's computer, so it can be restored. */

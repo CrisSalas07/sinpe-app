@@ -50,10 +50,19 @@ export const saveSchedule = (schedule) => writeJson(SCHEDULE_FILE, schedule);
 
 export const readHistory = () => readJson(HISTORY_FILE, []);
 
+// Each addHistory waits for the previous one. Otherwise two that end at the same time (the automatic
+// backup while the schedule is saved) read the same file and the second write erases the first entry.
+let historyQueue = Promise.resolve();
+
 /** Adds an entry at the top of the history and keeps the latest HISTORY_LIMIT. */
-export async function addHistory(entry) {
-  const history = await readHistory();
-  await writeJson(HISTORY_FILE, [entry, ...history].slice(0, HISTORY_LIMIT));
+export function addHistory(entry) {
+  const write = historyQueue.then(async () => {
+    const history = await readHistory();
+    await writeJson(HISTORY_FILE, [entry, ...history].slice(0, HISTORY_LIMIT));
+  });
+  // A failed write is reported to its caller, but must not block the ones after it.
+  historyQueue = write.catch(() => {});
+  return write;
 }
 
 /** The .sql files of the folder, newest first. */

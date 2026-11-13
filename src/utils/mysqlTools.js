@@ -1,10 +1,11 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { env } from '../config/env.js';
+import { stripDefiners } from './sqlDump.js';
 
 // Runs the MySQL command-line clients (mysqldump.exe and mysql.exe), the same tools as in exercise 2.
 // They are started without a shell and with an argument list, so no value can inject commands.
@@ -100,9 +101,19 @@ export function dumpDatabase(file) {
   );
 }
 
-/** Runs every statement of a backup file against the database (mysql -u … database < file). */
-export function restoreDatabase(file) {
-  return withOptionFile((options) =>
-    run(tool('mysql'), [options, '--default-character-set=utf8mb4', env.db.database], file),
-  );
+/**
+ * Runs every statement of a backup file against the database (mysql -u … database < file).
+ * It runs a temporary copy without DEFINER=…: the backup account cannot create objects in another
+ * account's name, so each procedure and trigger becomes its own.
+ */
+export async function restoreDatabase(file) {
+  const copy = path.join(os.tmpdir(), `sinpe-restore-${randomBytes(8).toString('hex')}.sql`);
+  await writeFile(copy, stripDefiners(await readFile(file, 'utf8')), { mode: 0o600 });
+  try {
+    await withOptionFile((options) =>
+      run(tool('mysql'), [options, '--default-character-set=utf8mb4', env.db.database], copy),
+    );
+  } finally {
+    await rm(copy, { force: true });
+  }
 }

@@ -44,7 +44,8 @@ sinpe-app/
 ├── db/                         Scripts de MySQL (se cargan en orden)
 │   ├── 01_esquema_y_datos.sql  Tablas y datos de prueba (borra y recrea la base)
 │   ├── 02_triggers.sql         Triggers de validación y de auditoría
-│   └── 03_procedimientos.sql   Procedimientos almacenados y el usuario sinpe_app
+│   ├── 03_procedimientos.sql   Procedimientos almacenados y el usuario sinpe_app
+│   └── 04_usuario_respaldos.sql  Usuario sinpe_backup del módulo Respaldos
 ├── src/                        Servidor (Node.js + Express)
 │   ├── server.js               Arranca el servidor HTTP
 │   ├── app.js                  Middlewares, rutas y archivos estáticos
@@ -149,12 +150,20 @@ por un procedimiento.
    - No los encadene con `-e "source a; source b"`: por el `DELIMITER`, los procedimientos no se
      instalan.
    - `01` **borra y recrea la base**. Para volver a los datos de prueba, cargue de nuevo `01`, `02` y
-     `03`. El usuario `sinpe_app` y su contraseña se conservan.
+     `03`. Los usuarios `sinpe_app` y `sinpe_backup` y sus contraseñas se conservan.
+
+   Para el módulo **Respaldos**, cargue también `04` (una sola vez). Crea el usuario `sinpe_backup`,
+   que solo puede trabajar sobre la base `sinpe_movil`:
+
+   ```sh
+   mysql -u root -p < db/04_usuario_respaldos.sql
+   ```
 
 3. **Cambiar la contraseña de ejemplo** del usuario `sinpe_app` (viene en `03_procedimientos.sql`):
 
    ```sql
    ALTER USER 'sinpe_app'@'localhost' IDENTIFIED BY '<su contraseña>';
+   ALTER USER 'sinpe_backup'@'localhost' IDENTIFIED BY '<otra contraseña>';
    ```
 
 4. **Crear el archivo `.env`** a partir de la plantilla y completar cada valor:
@@ -174,8 +183,8 @@ por un procedimiento.
    | `SESSION_SECRET`     | Al menos 32 caracteres al azar (ver el comando abajo) |
    | `APP_USER`           | `admin`                                               |
    | `APP_PASSWORD_HASH`  | Ver el paso 6                                         |
-   | `BACKUP_DB_USER`     | `root` (módulo Respaldos; vacío lo desactiva)         |
-   | `BACKUP_DB_PASSWORD` | Contraseña de ese usuario de MySQL                    |
+   | `BACKUP_DB_USER`     | `sinpe_backup` (módulo Respaldos; vacío lo desactiva) |
+   | `BACKUP_DB_PASSWORD` | La contraseña de `sinpe_backup` del paso 3            |
    | `MYSQL_BIN_DIR`      | `C:\Program Files\MySQL\MySQL Server 8.0\bin`         |
    | `BACKUP_DIR`         | `respaldos`                                           |
 
@@ -304,13 +313,19 @@ estadísticas arriba y un buscador.
   estructura, datos, procedimientos, triggers y eventos.
 - **Restaurar:** elija un archivo de la carpeta de respaldos o suba un `.sql` de su computadora
   (de `mysqldump` o de Workbench), marque la confirmación y presione **Restaurar**. Antes de
-  restaurar se guarda un respaldo de seguridad de los datos actuales. Se rechaza un archivo que no
-  sea un respaldo de MySQL o que tenga un `USE` o un `CREATE/DROP DATABASE` de otra base.
+  restaurar se guarda un respaldo de seguridad de los datos actuales. Si la restauración falla a la
+  mitad, ese respaldo se restaura solo y la base queda como estaba (el mensaje y el historial dicen
+  "Se revirtió"). Se rechaza un archivo que no sea un respaldo de MySQL o que tenga un `USE` o un
+  `CREATE/DROP DATABASE` de otra base.
+- Si la app estaba apagada a la hora de un respaldo automático, al arrancar hace uno de
+  recuperación (en el historial dice "Recupera el de…"). Se hace uno solo, aunque se hayan perdido
+  varios.
 - **Archivos de respaldo** (con botón Descargar) e **Historial** de respaldos, restauraciones y
   cambios de programación, con su resultado.
-- Requiere en el `.env`: `BACKUP_DB_USER` y `BACKUP_DB_PASSWORD` (por ejemplo `root`: el usuario
-  `sinpe_app` no tiene permisos para respaldar ni restaurar), `MYSQL_BIN_DIR` (carpeta de
-  `mysqldump.exe`) y `BACKUP_DIR` (carpeta de los respaldos, por defecto `respaldos/`).
+- Requiere en el `.env`: `BACKUP_DB_USER=sinpe_backup` y `BACKUP_DB_PASSWORD` (el usuario de
+  `db/04_usuario_respaldos.sql`; `sinpe_app` no tiene permisos para respaldar ni restaurar),
+  `MYSQL_BIN_DIR` (carpeta de `mysqldump.exe`) y `BACKUP_DIR` (carpeta de los respaldos, por
+  defecto `respaldos/`).
 
 ### Cliente
 
@@ -408,6 +423,13 @@ saldo.
 - **Respaldos:** solo el administrador entra al módulo. `mysqldump` y `mysql` se ejecutan sin
   consola y con lista de argumentos; la contraseña va en un archivo temporal, nunca en la línea
   de comandos. Los nombres de archivo no pueden salir de la carpeta de respaldos.
+- **Restaurar no usa `root`:** restaurar ejecuta todo el SQL del archivo, así que se hace con
+  `sinpe_backup`, que solo tiene permisos sobre `sinpe_movil`. Si un archivo trae un `GRANT`, un
+  `CREATE USER` o un procedimiento que intenta darse permisos, MySQL lo rechaza ("Access denied") y
+  la base se revierte. Antes de restaurar, la app quita los `DEFINER=...` del archivo: los
+  procedimientos y triggers restaurados quedan a nombre de `sinpe_backup` (no de `root`) y siguen
+  funcionando igual. **No borre el usuario `sinpe_backup`:** sin él, esos procedimientos dejan de
+  funcionar. `04_usuario_respaldos.sql` explica cada permiso que se le da.
 
 ## 9. Scripts y pruebas
 
@@ -430,6 +452,11 @@ saldo.
   IBAN, como en el servicio real; esa consulta no tiene límite de intentos.
 - **Sin comisión:** la comisión se muestra siempre en ₡0 (simplificación del prototipo).
 - **Contraseña temporal:** no se obliga a cambiarla en el primer ingreso.
-- **Respaldo automático:** solo corre mientras el servidor está encendido; si estaba apagado a la
-  hora programada, ese respaldo no se recupera. La hora es la del servidor. Los respaldos no se
-  borran solos.
+- **Respaldo automático:** solo corre mientras el servidor está encendido. Si estaba apagado a la
+  hora programada, al arrancar se hace un solo respaldo de recuperación, aunque se hayan perdido
+  varios. La hora es la del servidor. Los respaldos no se borran solos.
+- **Restaurar no borra lo nuevo:** el respaldo reemplaza las tablas, procedimientos y triggers que
+  contiene, pero una tabla o un procedimiento creado después del respaldo sigue ahí. Con el esquema
+  fijo de este proyecto no ocurre. Borrar la base completa antes de restaurar sería más riesgoso.
+- **Quien restaura puede dañar `sinpe_movil`:** restaurar es reemplazar la base, así que un archivo
+  malicioso puede cambiar sus datos o sus procedimientos. Lo que no puede es salirse de esa base.

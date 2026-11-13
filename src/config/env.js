@@ -40,7 +40,8 @@ export const env = {
   appUser: process.env.APP_USER,
   appPasswordHash: process.env.APP_PASSWORD_HASH,
   // Backup module (optional). sinpe_app only has SELECT and EXECUTE, so mysqldump and the restore
-  // run with their own MySQL account (root or one with every privilege on the database).
+  // run with their own MySQL account: sinpe_backup (db/04_usuario_respaldos.sql), which can only
+  // touch this database. Not root: a restore runs every statement of the file with that account.
   backup: {
     user: process.env.BACKUP_DB_USER ?? '',
     password: process.env.BACKUP_DB_PASSWORD ?? '',
