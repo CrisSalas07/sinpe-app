@@ -6,6 +6,8 @@ const ORIGIN_NOT_OWNED = 'La cuenta de origen no pertenece al cliente';
 const NOT_REGISTERED = 'El número de destino no está registrado';
 const NOT_ENROLLED = 'El número de destino no está afiliado a SINPE Móvil';
 const NO_DESTINATION_ACCOUNT = 'La cuenta destino no existe';
+const ID_REQUIRED = 'Indique la identificación del titular de la cuenta destino';
+const ID_MISMATCH = 'La identificación no corresponde al titular de la cuenta destino';
 
 // Stored procedure / trigger messages that belong to one form field, so the form can highlight it.
 // The message itself is shown unchanged. Rules that could be about either account stay unmapped.
@@ -24,14 +26,19 @@ const SINPE_FIELDS = {
 const IBAN_FIELDS = {
   [ORIGIN_NOT_OWNED]: 'originIban',
   [NO_DESTINATION_ACCOUNT]: 'destinationIban',
-  'Indique la identificación del titular de la cuenta destino': 'destinationIdentification',
-  'La identificación no corresponde al titular de la cuenta destino': 'destinationIdentification',
+  'La cuenta destino no está matriculada': 'destinationIban',
   'No se puede transferir a la misma cuenta': 'destinationIban',
   'Las cuentas deben tener la misma moneda': 'destinationIban',
   'El monto debe ser positivo': 'amount',
   'La cuenta de origen no está activa': 'originIban',
   'La cuenta de destino no está activa': 'destinationIban',
   'Saldo insuficiente': 'amount',
+};
+const ENROLL_FIELDS = {
+  [NO_DESTINATION_ACCOUNT]: 'destinationIban',
+  'Sus propias cuentas no necesitan matrícula': 'destinationIban',
+  [ID_REQUIRED]: 'destinationIdentification',
+  [ID_MISMATCH]: 'destinationIdentification',
 };
 
 async function withFieldErrors(fields, call) {
@@ -75,16 +82,34 @@ async function recipientByNumber(number) {
   return row;
 }
 
-async function recipientByIban(iban) {
-  const row = await transfersRepository.findRecipientByIban(iban);
+async function recipientByIban(iban, user) {
+  const row = await transfersRepository.findRecipientByIban(iban, user);
   if (!row) throw new ValidationError(NO_DESTINATION_ACCOUNT, 'destinationIban');
   return row;
 }
 
-/** Only the compact name and the entity: never the balance, status or identification of a third party. */
-export async function recipient({ number, iban }) {
-  const row = number ? await recipientByNumber(number) : await recipientByIban(iban);
-  return { name: compactName(row.names, row.firstSurname), entity: row.entity };
+/**
+ * Only the compact name and the entity: never the balance, status or identification of a third
+ * party. For an IBAN also whether it is the user's own account and whether they enrolled it.
+ */
+export async function recipient(user, { number, iban }) {
+  if (number) {
+    const row = await recipientByNumber(number);
+    return { name: compactName(row.names, row.firstSurname), entity: row.entity };
+  }
+  const row = await recipientByIban(iban, user);
+  return {
+    name: compactName(row.names, row.firstSurname),
+    entity: row.entity,
+    own: Boolean(row.own),
+    enrolled: Boolean(row.enrolled),
+  };
+}
+
+/** Enrolls a third party's account and answers with its recipient data, now enrolled. */
+export async function enroll(user, enrollment) {
+  await withFieldErrors(ENROLL_FIELDS, () => transfersRepository.enrollAccount(user, enrollment));
+  return recipient(user, { iban: enrollment.iban });
 }
 
 export async function limit({ entityId, clientId }, iban) {

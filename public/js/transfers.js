@@ -27,12 +27,11 @@ const ACCOUNT_025 = 'CR12016100000000000025';
 const TEST_CASES = {
   'same-account': { type: 'sinpe', origin: ACCOUNT_001, destination: '70000001', amount: '1000' },
   allowed: { type: 'sinpe', origin: ACCOUNT_001, destination: '80000002', amount: '15000' },
-  // 025 is in the BP, so the beneficiary's id is needed too; it is Leonardo's own account.
+  // 025 is Leonardo's own account (in the BP), so it needs no enrollment.
   'other-currency': {
     type: 'iban',
     origin: ACCOUNT_001,
     destination: ACCOUNT_025,
-    destinationId: 'UCR000001',
     amount: '15000',
   },
   insufficient: { type: 'sinpe', origin: ACCOUNT_001, destination: '80000002', amount: '150000' },
@@ -48,10 +47,12 @@ const backButton = document.getElementById('back');
 const loadAlert = document.getElementById('load-alert');
 const limitHelp = document.getElementById('amount-help');
 const destinationIdField = document.getElementById('destination-id-field');
+const enrollPanel = document.getElementById('enroll-panel');
+const enrollButton = document.getElementById('enroll');
 
 let type = 'sinpe';
 let accounts = [];
-let recipient = null; // { name, entity } of the current destination, once found
+let recipient = null; // { name, entity } (+ own, enrolled for an IBAN) of the destination, once found
 let lookups = 0; // only the answer to the latest request counts
 let limitLookups = 0;
 
@@ -78,6 +79,7 @@ fields.amount.addEventListener('input', () => {
 form.addEventListener('submit', onReview);
 backButton.addEventListener('click', () => setStep(1));
 confirmButton.addEventListener('click', onConfirm);
+enrollButton.addEventListener('click', onEnroll);
 document.getElementById('new-transfer').addEventListener('click', () => {
   form.reset();
   setType('sinpe');
@@ -152,7 +154,6 @@ function applyTestCase(testCase) {
   setType(testCase.type);
   fields.originIban.value = testCase.origin;
   destinationField().value = testCase.destination;
-  fields.destinationIdentification.value = testCase.destinationId ?? '';
   fields.amount.value = testCase.amount;
   setStep(1);
   renderOrigin();
@@ -243,16 +244,24 @@ function isComplete(value) {
   return (type === 'sinpe' ? PHONE_PATTERN : IBAN_PATTERN).test(value);
 }
 
-/** SINPE asks for the beneficiary's identification when the IBAN is of another entity. */
-function needsDestinationId() {
-  return type === 'iban' && recipient !== null && recipient.entity !== user.entityCode;
+/** A third party's IBAN must be enrolled once before transferring to it; own accounts never. */
+function needsEnrollment() {
+  return type === 'iban' && recipient !== null && !recipient.own && !recipient.enrolled;
 }
 
-function destinationId() {
-  return needsDestinationId() ? fields.destinationIdentification.value.trim().toUpperCase() : '';
+/** SINPE asks for the holder's identification when the account is of another entity. */
+function needsDestinationId() {
+  return needsEnrollment() && recipient.entity !== user.entityCode;
+}
+
+/** "Cuenta propia" or "Matriculada" next to an IBAN recipient's name. */
+function enrollmentNote() {
+  if (type !== 'iban' || !recipient || needsEnrollment()) return '';
+  return recipient.own ? ' · Cuenta propia' : ' · Matriculada';
 }
 
 function renderDestination() {
+  enrollPanel.hidden = !needsEnrollment();
   destinationIdField.hidden = !needsDestinationId();
   const card = document.getElementById('card-to');
   const input = destinationField();
@@ -261,7 +270,7 @@ function renderDestination() {
     help.textContent = HELP[input.name];
     return renderEmptyCard(card, 'Hacia');
   }
-  help.textContent = `Destinatario: ${recipient.name} · ${recipient.entity}`;
+  help.textContent = `Destinatario: ${recipient.name} · ${recipient.entity}${enrollmentNote()}`;
   const value = destinationValue();
   card.replaceChildren(
     el('div', { class: 'acct-label' }, 'Hacia'),
@@ -305,6 +314,38 @@ async function lookUpRecipient() {
   }
 }
 
+// ---------- Enrollment of a third party's IBAN, without leaving the form ----------
+
+async function onEnroll() {
+  clearFormErrors(form, formAlert);
+  const iban = destinationValue();
+  const identification = fields.destinationIdentification.value.trim();
+  if (needsDestinationId() && identification === '') {
+    return showFormError(form, formAlert, {
+      field: 'destinationIdentification',
+      message: 'Indique la identificación del titular de la cuenta destino.',
+    });
+  }
+  enrollButton.disabled = true;
+  try {
+    const enrolled = await api('/api/transfers/enrollments', {
+      method: 'POST',
+      body: needsDestinationId()
+        ? { destinationIban: iban, destinationIdentification: identification }
+        : { destinationIban: iban },
+    });
+    if (destinationValue() !== iban) return; // the user changed the IBAN meanwhile
+    recipient = enrolled;
+    fields.destinationIdentification.value = '';
+    renderDestination();
+    fields.amount.focus();
+  } catch (err) {
+    showFormError(form, formAlert, err);
+  } finally {
+    enrollButton.disabled = false;
+  }
+}
+
 // ---------- Step 1 → 2: format checks only; business rules are checked by the database ----------
 
 function formatError() {
@@ -314,11 +355,8 @@ function formatError() {
   if (type === 'iban' && !IBAN_PATTERN.test(destinationValue())) {
     return { field: 'destinationIban', message: 'El IBAN debe ser CR seguido de 20 dígitos.' };
   }
-  if (needsDestinationId() && destinationId() === '') {
-    return {
-      field: 'destinationIdentification',
-      message: 'Indique la identificación del titular de la cuenta destino.',
-    };
+  if (needsEnrollment()) {
+    return { field: 'destinationIban', message: 'Matricule la cuenta antes de transferirle.' };
   }
   const amount = fields.amount.value.trim();
   if (!MONEY_PATTERN.test(amount)) {
@@ -352,7 +390,6 @@ function onReview(event) {
   document.getElementById('review-rows').replaceChildren(
     kvRow('Cuenta de origen', accountLabel(origin.iban, origin.currency)),
     kvRow('Destino', destinationText()),
-    ...idRow(destinationId()),
     kvRow('Monto', formatMoney(amount, origin.currency)),
     // Only when the user wrote one, so an empty detail looks exactly like the Figma.
     ...detailRow(fields.detail.value.trim()),
@@ -373,11 +410,6 @@ function withEntity(text, code) {
 
 function kvRow(label, value) {
   return el('div', { class: 'kv-row' }, el('dt', {}, label), el('dd', {}, value));
-}
-
-/** The beneficiary's identification, only between entities (IBAN). */
-function idRow(id) {
-  return id ? [kvRow('Identificación del destinatario', id)] : [];
 }
 
 /** [] when there is no detail, so it can be spread into a list of rows. */
@@ -406,21 +438,16 @@ async function onConfirm() {
           })
         : await api('/api/transfers/iban', {
             method: 'POST',
-            body: {
-              ...common,
-              destinationIban: destinationValue(),
-              destinationIdentification: destinationId(),
-            },
+            body: { ...common, destinationIban: destinationValue() },
           });
     await loadAccounts(); // the select and the card show the balances stored after the transfer
     fillOriginSelect();
     renderOrigin();
-    showReceipt(result, destinationId());
+    showReceipt(result);
     setStep(3);
   } catch (err) {
     // Rejected by the database: back to Datos with its message (07 error screens).
     setStep(1);
-    if (err.field === 'destinationIdentification') destinationIdField.hidden = false;
     showFormError(form, formAlert, err);
   } finally {
     confirmButton.disabled = false;
@@ -428,7 +455,7 @@ async function onConfirm() {
   }
 }
 
-function showReceipt(result, sentId) {
+function showReceipt(result) {
   const money = (value) => formatMoney(value, result.currency);
   const isSinpe = result.destinationNumber !== null;
   const destination = isSinpe
@@ -449,7 +476,6 @@ function showReceipt(result, sentId) {
         'Destino',
         withEntity(`${result.destinationName} · ${destination}`, result.destinationEntity),
       ),
-      ...idRow(isSinpe ? '' : sentId),
       ...detailRow(result.detail),
       kvRow('Comisión', money('0')),
       kvRow(

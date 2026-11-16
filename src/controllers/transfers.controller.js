@@ -1,5 +1,6 @@
 import * as transfersService from '../services/transfers.service.js';
 import {
+  validateEnrollment,
   validateIbanTransfer,
   validateLimitQuery,
   validateRecipientQuery,
@@ -17,9 +18,15 @@ export async function byIban(req, res) {
 }
 
 export async function recipient(req, res) {
-  res.json(await transfersService.recipient(validateRecipientQuery(req.query)));
+  res.json(await transfersService.recipient(req.session.user, validateRecipientQuery(req.query)));
 }
 
 export async function limit(req, res) {
   res.json(await transfersService.limit(req.session.user, validateLimitQuery(req.query)));
+}
+
+export async function enroll(req, res) {
+  res
+    .status(201)
+    .json(await transfersService.enroll(req.session.user, validateEnrollment(req.body)));
 }

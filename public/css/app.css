@@ -567,6 +567,28 @@ select {
   color: var(--ok);
 }
 
+/* ---------- Account enrollment (Transferir · Por IBAN) ---------- */
+.enroll {
+  margin-bottom: 18px;
+  padding: 14px;
+  border-radius: var(--r-btn);
+  background: var(--warnbg);
+  color: var(--warn);
+}
+
+.enroll-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.enroll-text {
+  margin: 0 0 12px;
+}
+
+.enroll .field:last-of-type {
+  margin-bottom: 12px;
+}
+
 /* ---------- Segmented tabs ---------- */
 .tabs {
   display: inline-flex;

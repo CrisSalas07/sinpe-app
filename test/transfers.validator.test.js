@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ValidationError } from '../src/utils/errors.js';
 import {
+  validateEnrollment,
   validateIbanTransfer,
   validateLimitQuery,
   validateRecipientQuery,
@@ -105,15 +106,40 @@ test('the limit query needs the origin IBAN', () => {
   );
 });
 
-test('IBAN transfer: the beneficiary id is optional (the procedure requires it between entities)', () => {
-  assert.equal(validateIbanTransfer(iban).destinationIdentification, null);
+test('IBAN transfer no longer takes the beneficiary id: it is checked when enrolling', () => {
   assert.equal(
-    validateIbanTransfer({ ...iban, destinationIdentification: ' UCR000002 ' })
-      .destinationIdentification,
+    fieldOf(() => validateIbanTransfer({ ...iban, destinationIdentification: 'UCR000002' })),
+    'destinationIdentification',
+  );
+});
+
+test('enrollment: IBAN required and uppercased, holder id optional and trimmed', () => {
+  assert.deepEqual(validateEnrollment({ destinationIban: iban.destinationIban }), {
+    iban: 'CR12015100000000000002',
+    identification: null,
+  });
+  assert.equal(
+    validateEnrollment({
+      destinationIban: iban.destinationIban,
+      destinationIdentification: ' UCR000002 ',
+    }).identification,
     'UCR000002',
   );
   assert.equal(
-    fieldOf(() => validateIbanTransfer({ ...iban, destinationIdentification: 'x'.repeat(21) })),
+    fieldOf(() => validateEnrollment({ destinationIban: 'CR1' })),
+    'destinationIban',
+  );
+  assert.equal(
+    fieldOf(() =>
+      validateEnrollment({
+        destinationIban: iban.destinationIban,
+        destinationIdentification: 'x'.repeat(21),
+      }),
+    ),
     'destinationIdentification',
+  );
+  assert.equal(
+    fieldOf(() => validateEnrollment({ destinationIban: iban.destinationIban, clientId: 2 })),
+    'clientId',
   );
 });

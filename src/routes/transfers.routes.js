@@ -7,3 +7,4 @@ transfersRoutes.get('/recipient', transfers.recipient);
 transfersRoutes.get('/limit', transfers.limit);
 transfersRoutes.post('/sinpe', transfers.bySinpe);
 transfersRoutes.post('/iban', transfers.byIban);
+transfersRoutes.post('/enrollments', transfers.enroll);
