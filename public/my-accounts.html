@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mis cuentas · JUNTAUCR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Instrument+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap"
+    />
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <script type="module" src="/js/my-accounts.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card hero">
+        <div>
+          <h1 class="page-title">Mis cuentas</h1>
+          <p class="page-sub">
+            Sus cuentas en esta entidad y las cuentas de terceros que matriculó para transferirles
+            por IBAN.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#matricular">Matricular una cuenta</a>
+          </div>
+        </div>
+      </section>
+
+      <div id="page-alert" class="alert alert-bad" role="alert" hidden></div>
+
+      <div class="section-head">
+        <h2 class="section-title">Cuentas propias</h2>
+      </div>
+      <div class="acct-grid" id="accounts"></div>
+      <p class="muted" id="accounts-empty" hidden>No tiene cuentas en esta entidad.</p>
+
+      <div class="section-head">
+        <h2 class="section-title">Cuentas matriculadas</h2>
+      </div>
+      <div id="enrolled-alert" class="alert alert-ok" role="status" hidden></div>
+      <div class="acct-grid" id="enrolled"></div>
+      <p class="muted" id="enrolled-empty" hidden>
+        Aún no ha matriculado cuentas. Matricule la primera arriba.
+      </p>
+
+      <!-- Enrollment: a third party's account, once, before transferring to it by IBAN. -->
+      <form id="enroll-form" class="card form-col" novalidate>
+        <h2 class="section-title" id="matricular">Matricular una cuenta</h2>
+        <p class="page-sub">
+          Se matricula una sola vez y queda lista para transferirle por IBAN. Si la cuenta es de
+          otro banco, se pide la cédula del titular para verificar que es suya.
+        </p>
+        <div class="alert alert-bad" role="alert" hidden></div>
+
+        <div class="field">
+          <label class="label" for="destinationIban">IBAN de la cuenta</label>
+          <input
+            class="input"
+            id="destinationIban"
+            name="destinationIban"
+            maxlength="22"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="CR12015200000000000009"
+          />
+          <p class="help" id="iban-help">CR seguido de 20 dígitos.</p>
+          <p class="field-error" hidden></p>
+        </div>
+
+        <!-- Only for an account of another bank, as SINPE requires. -->
+        <div class="field" id="identification-field" hidden>
+          <label class="label" for="destinationIdentification">Cédula del titular</label>
+          <input
+            class="input"
+            id="destinationIdentification"
+            name="destinationIdentification"
+            maxlength="20"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p class="help">
+            La cuenta es de otro banco: se verifica que la cédula sea de su titular.
+          </p>
+          <p class="field-error" hidden></p>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Matricular cuenta</button>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

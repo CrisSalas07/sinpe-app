@@ -697,6 +697,27 @@ select {
   border-radius: var(--r-acct);
 }
 
+/* An account in the colors of its bank: a band in its main color, its code at the top right. */
+.acct-card[data-entity] {
+  border-top: 4px solid var(--entity);
+  background: color-mix(in srgb, var(--entity) 5%, var(--surf));
+}
+
+.acct-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.acct-action {
+  margin-left: auto;
+}
+
+.acct-card .tags {
+  align-items: center;
+}
+
 .acct-label {
   font-size: 13px;
   font-weight: 600;

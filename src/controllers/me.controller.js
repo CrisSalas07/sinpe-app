@@ -11,6 +11,10 @@ export async function accounts(req, res) {
   res.json(await meService.accounts(req.session.user));
 }
 
+export async function enrolledAccounts(req, res) {
+  res.json(await meService.enrolledAccounts(req.session.user));
+}
+
 export async function recentMovements(req, res) {
   res.json(await meService.recentMovements(req.session.user));
 }

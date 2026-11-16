@@ -73,6 +73,12 @@
         </fieldset>
 
         <fieldset class="plain" data-type="iban" disabled hidden>
+          <!-- Own accounts and enrolled ones in the origin's currency; hidden when there are none. -->
+          <div class="field" id="saved-field" hidden>
+            <label class="label" for="savedIban">Elegir una cuenta</label>
+            <select class="select" id="savedIban"></select>
+            <p class="help">Sus cuentas y las que ya matriculó, en la moneda del origen.</p>
+          </div>
           <div class="field">
             <label class="label" for="destinationIban">IBAN de destino</label>
             <input
