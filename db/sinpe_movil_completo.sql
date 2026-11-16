@@ -753,9 +753,10 @@ begin
     declare v_id_cuenta int;
     declare v_entidad   int;
     declare v_dueno     int;
+    declare v_estado    varchar(20);
 
-    select id_cuenta, id_entidad, id_cliente
-    into v_id_cuenta, v_entidad, v_dueno
+    select id_cuenta, id_entidad, id_cliente, estado
+    into v_id_cuenta, v_entidad, v_dueno, v_estado
     from cuenta_iban
     where iban = p_iban;
 
@@ -767,9 +768,18 @@ begin
         signal sqlstate '45000' set message_text = 'Sus propias cuentas no necesitan matrícula';
     end if;
 
+    -- una cuenta inactiva o bloqueada no puede recibir: matricularla solo haria fallar la transferencia.
+    if v_estado <> 'ACTIVA' then
+        signal sqlstate '45000' set message_text = 'La cuenta de destino no está activa';
+    end if;
+
     if v_entidad <> p_id_entidad then
         if p_identificacion is null or trim(p_identificacion) = '' then
             signal sqlstate '45000' set message_text = 'Indique la identificación del titular de la cuenta destino';
+        end if;
+
+        if not exists (select 1 from cliente where identificacion = trim(p_identificacion)) then
+            signal sqlstate '45000' set message_text = 'No hay ningún cliente con esa identificación';
         end if;
 
         if not exists (select 1 from cliente

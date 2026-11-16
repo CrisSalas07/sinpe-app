@@ -49,9 +49,12 @@ const limitHelp = document.getElementById('amount-help');
 const destinationIdField = document.getElementById('destination-id-field');
 const enrollPanel = document.getElementById('enroll-panel');
 const enrollButton = document.getElementById('enroll');
+const savedField = document.getElementById('saved-field');
+const savedSelect = document.getElementById('savedIban');
 
 let type = 'sinpe';
 let accounts = [];
+let enrolledAccounts = []; // third-party accounts the client enrolled, for "Elegir una cuenta"
 let recipient = null; // { name, entity } (+ own, enrolled for an IBAN) of the destination, once found
 let lookups = 0; // only the answer to the latest request counts
 let limitLookups = 0;
@@ -67,12 +70,24 @@ for (const tab of form.querySelectorAll('.tab')) {
 for (const chip of form.querySelectorAll('[data-case]')) {
   chip.addEventListener('click', () => applyTestCase(TEST_CASES[chip.dataset.case]));
 }
-fields.originIban.addEventListener('change', renderOrigin);
+fields.originIban.addEventListener('change', () => {
+  renderOrigin();
+  fillSavedSelect();
+});
+savedSelect.addEventListener('change', () => {
+  if (!savedSelect.value) return;
+  fields.destinationIban.value = savedSelect.value;
+  lookUpRecipient();
+  fields.amount.focus();
+});
 fields.destinationNumber.addEventListener('input', () => {
   fields.destinationNumber.value = fields.destinationNumber.value.replace(/\D/g, '');
   lookUpRecipient();
 });
-fields.destinationIban.addEventListener('input', lookUpRecipient);
+fields.destinationIban.addEventListener('input', () => {
+  syncSavedSelect();
+  lookUpRecipient();
+});
 fields.amount.addEventListener('input', () => {
   fields.amount.value = fields.amount.value.replace(/[^\d.]/g, '');
 });
@@ -89,10 +104,27 @@ document.getElementById('new-transfer').addEventListener('click', () => {
 await loadAccounts();
 setType('sinpe');
 setStep(1);
+openFromUrl();
+
+/** "?to=IBAN" (Transferir from Mis cuentas) prefills the IBAN; "#iban" only opens that tab. */
+function openFromUrl() {
+  const to = new URLSearchParams(location.search).get('to')?.toUpperCase();
+  if (!to && location.hash !== '#iban') return;
+  setType('iban');
+  if (to && IBAN_PATTERN.test(to)) {
+    fields.destinationIban.value = to;
+    syncSavedSelect();
+    lookUpRecipient();
+  }
+  fields.destinationIban.focus();
+}
 
 async function loadAccounts() {
   try {
-    accounts = await api('/api/me/accounts');
+    [accounts, enrolledAccounts] = await Promise.all([
+      api('/api/me/accounts'),
+      api('/api/me/enrolled-accounts'),
+    ]);
     loadAlert.hidden = true;
   } catch (err) {
     loadAlert.textContent = err.message;
@@ -117,6 +149,40 @@ function fillOriginSelect() {
   if (usable.some((account) => account.iban === keep)) fields.originIban.value = keep;
 }
 
+/**
+ * "Elegir una cuenta": own accounts (except the origin) and enrolled ones, in the origin's
+ * currency, because an IBAN transfer between currencies is always rejected.
+ */
+function fillSavedSelect() {
+  const origin = originAccount();
+  const sameCurrency = (account) => !origin || account.currency === origin.currency;
+  const own = accounts.filter((a) => a.iban !== origin?.iban && sameCurrency(a));
+  const enrolled = enrolledAccounts.filter(sameCurrency);
+  const group = (label, options) => (options.length ? [el('optgroup', { label }, ...options)] : []);
+  savedSelect.replaceChildren(
+    el('option', { value: '' }, 'Escribir otro IBAN'),
+    ...group(
+      'Mis cuentas',
+      own.map((a) => el('option', { value: a.iban }, accountLabel(a.iban, a.currency))),
+    ),
+    ...group(
+      'Matriculadas',
+      enrolled.map((a) =>
+        el('option', { value: a.iban }, `${a.name} · ${shortIban(a.iban)} · ${a.entity}`),
+      ),
+    ),
+  );
+  savedField.hidden = own.length + enrolled.length === 0;
+  syncSavedSelect();
+}
+
+/** Shows the typed IBAN as selected when it is one of the listed accounts. */
+function syncSavedSelect() {
+  const value = destinationValue();
+  const listed = [...savedSelect.options].some((option) => option.value === value);
+  savedSelect.value = listed && type === 'iban' ? value : '';
+}
+
 // ---------- Tabs, steps and test cases ----------
 
 function setType(newType) {
@@ -132,6 +198,7 @@ function setType(newType) {
   clearFormErrors(form, formAlert);
   fillOriginSelect();
   renderOrigin();
+  fillSavedSelect();
   lookUpRecipient();
 }
 
@@ -157,6 +224,7 @@ function applyTestCase(testCase) {
   fields.amount.value = testCase.amount;
   setStep(1);
   renderOrigin();
+  fillSavedSelect();
   lookUpRecipient();
 }
 
@@ -338,6 +406,8 @@ async function onEnroll() {
     recipient = enrolled;
     fields.destinationIdentification.value = '';
     renderDestination();
+    enrolledAccounts = await api('/api/me/enrolled-accounts').catch(() => enrolledAccounts);
+    fillSavedSelect();
     fields.amount.focus();
   } catch (err) {
     showFormError(form, formAlert, err);
@@ -443,6 +513,7 @@ async function onConfirm() {
     await loadAccounts(); // the select and the card show the balances stored after the transfer
     fillOriginSelect();
     renderOrigin();
+    fillSavedSelect();
     showReceipt(result);
     setStep(3);
   } catch (err) {

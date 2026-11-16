@@ -37,6 +37,8 @@ const IBAN_FIELDS = {
 const ENROLL_FIELDS = {
   [NO_DESTINATION_ACCOUNT]: 'destinationIban',
   'Sus propias cuentas no necesitan matrícula': 'destinationIban',
+  'La cuenta de destino no está activa': 'destinationIban',
+  'No hay ningún cliente con esa identificación': 'destinationIdentification',
   [ID_REQUIRED]: 'destinationIdentification',
   [ID_MISMATCH]: 'destinationIdentification',
 };

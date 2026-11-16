@@ -13,6 +13,7 @@ const MENUS = {
   ],
   CLIENTE: [
     { id: 'home', label: 'Inicio', href: '/home.html' },
+    { id: 'my-accounts', label: 'Mis cuentas', href: '/my-accounts.html' },
     { id: 'my-phones', label: 'Mis teléfonos', href: '/my-phones.html' },
     { id: 'transfers', label: 'Transferir', href: '/transfers.html' },
     { id: 'movements', label: 'Mis movimientos', href: '/movements.html' },

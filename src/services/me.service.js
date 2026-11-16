@@ -10,6 +10,12 @@ export const summary = ({ entityId, clientId }) => meRepository.findSummary(enti
 
 export const accounts = ({ entityId, clientId }) => meRepository.findAccounts(entityId, clientId);
 
+/** Third-party accounts the client enrolled here: only the holder's compact name, never a balance. */
+export async function enrolledAccounts({ entityId, clientId }) {
+  const rows = await meRepository.findEnrolledAccounts(entityId, clientId);
+  return rows.map(({ names, surname, ...row }) => ({ ...row, name: compactName(names, surname) }));
+}
+
 // The counterpart is shown with the same compact name as the rest of the app ("Ana De La Cruz").
 const withCounterpart = ({ counterpartNames, counterpartSurname, ...row }) => ({
   ...row,

@@ -25,6 +25,22 @@ export async function findAccounts(entityId, clientId) {
   return rows;
 }
 
+/** Third-party accounts enrolled by the client in the entity (cuenta_matriculada), newest first. */
+export async function findEnrolledAccounts(entityId, clientId) {
+  const [rows] = await pool.query(
+    `SELECT cu.iban, cu.moneda AS currency, e.codigo AS entity, m.fecha_matricula AS enrolledAt,
+       c.nombres AS names, c.primer_apellido AS surname
+     FROM cuenta_matriculada m
+     JOIN cuenta_iban cu ON cu.id_cuenta = m.id_cuenta
+     JOIN cliente c ON c.id_cliente = cu.id_cliente
+     JOIN entidad_financiera e ON e.id_entidad = cu.id_entidad
+     WHERE m.id_cliente = ? AND m.id_entidad = ?
+     ORDER BY m.fecha_matricula DESC, cu.iban`,
+    [clientId, entityId],
+  );
+  return rows;
+}
+
 /** Last movements of the client in the entity, newest first. */
 export async function findRecentMovements(entityId, clientId, limit) {
   const mine = [clientId, entityId];
