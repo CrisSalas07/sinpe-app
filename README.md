@@ -174,6 +174,8 @@ saldo.
    mysql -u root -p < db/04_usuario_respaldos.sql
    ```
 
+   - Si la consola dice que **`mysql` no se reconoce como comando**, MySQL no está en el `PATH`.
+     Vea [Agregar MySQL al PATH](#agregar-mysql-al-path) abajo.
    - En **PowerShell** el símbolo `<` no funciona; use `cmd /c` en cada línea, por ejemplo:
      `cmd /c "mysql -u root -p --default-character-set=utf8mb4 < db\01_esquema_y_datos.sql"`.
    - `--default-character-set=utf8mb4` hace que las tildes de los mensajes se guarden bien.
@@ -221,6 +223,31 @@ saldo.
 7. **Iniciar:** `npm run dev` y abrir <http://localhost:3000>.
 
 Si falta alguna variable, la app no arranca y dice cuál falta.
+
+### Agregar MySQL al PATH
+
+En Windows, el instalador de MySQL no siempre agrega `mysql.exe` al `PATH`. Si la consola dice
+**"`mysql` no se reconoce como un comando interno o externo"**, agregue la carpeta `bin` de MySQL
+Server (normalmente `C:\Program Files\MySQL\MySQL Server 8.0\bin`).
+
+**Solo para la ventana abierta** (se pierde al cerrarla):
+
+```bat
+:: CMD
+set PATH=%PATH%;C:\Program Files\MySQL\MySQL Server 8.0\bin
+```
+
+```powershell
+# PowerShell
+$env:Path += ";C:\Program Files\MySQL\MySQL Server 8.0\bin"
+```
+
+**De forma permanente:** busque _"variables de entorno"_ en el menú Inicio → **Editar las
+variables de entorno del sistema** → **Variables de entorno** → en _Variables de usuario_
+seleccione **Path** → **Editar** → **Nuevo** → pegue la ruta → **Aceptar** en todas las ventanas.
+Cierre y vuelva a abrir la consola.
+
+Para comprobarlo: `mysql --version`. No use `setx PATH ...`: puede recortar el `PATH` existente.
 
 ## Credenciales de prueba
 
@@ -352,8 +379,9 @@ casos del enunciado.
 <summary><b>Restaurar la base desde consola (cuando la app no puede entrar)</b></summary>
 
 Si la base `sinpe_movil` se borró o se dañó, la app no deja entrar y el módulo Respaldos no sirve.
-Se restaura como `root` en PowerShell, desde la carpeta del proyecto. Los respaldos de la app no
-traen `CREATE DATABASE`, así que primero se crea la base vacía:
+Se restaura como `root` en PowerShell, desde la carpeta del proyecto (si `mysql` no se reconoce,
+vea [Agregar MySQL al PATH](#agregar-mysql-al-path)). Los respaldos de la app no traen
+`CREATE DATABASE`, así que primero se crea la base vacía:
 
 ```powershell
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS sinpe_movil CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
