@@ -3,3 +3,7 @@ node_modules/
 *.zip
 c.txt
 respaldos/
+disenio/
+evidencias/
+*.pdf
+respaldos_app/

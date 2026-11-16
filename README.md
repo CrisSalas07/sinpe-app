@@ -1,43 +1,55 @@
 # SINPE JUNTAUCR
 
-Aplicación web para el ejercicio _Prueba corta – SINPE JUNTAUCR_ del curso de Bases de Datos (UCR,
-Sede del Sur). Simula clientes, cuentas IBAN, teléfonos, afiliaciones a SINPE Móvil y
-transferencias sobre una base de datos MySQL donde **todas las reglas de negocio viven en
-procedimientos almacenados y triggers**. La aplicación solo muestra datos y llama a esos
-procedimientos.
+Simulador web de **SINPE Móvil** y transferencias **IBAN** entre bancos costarricenses, construido
+sobre MySQL con **todas las reglas de negocio en procedimientos almacenados y triggers**. El
+servidor en Node.js solo valida entradas, controla sesiones y llama a esos procedimientos.
 
-## Contenido
+Proyecto del curso **Bases de Datos II** (Universidad de Costa Rica, Sede del Sur). Incluye el
+módulo de **respaldo y restauración** del _Laboratorio Copia de Seguridad_.
 
-1. [Funcionamiento general](#1-funcionamiento-general)
-2. [Estructura del proyecto](#2-estructura-del-proyecto)
-3. [Base de datos](#3-base-de-datos)
-4. [Manual de instalación](#4-manual-de-instalación)
-5. [Credenciales de prueba](#5-credenciales-de-prueba)
-6. [Manual de usuario](#6-manual-de-usuario)
-7. [Reglas de negocio](#7-reglas-de-negocio)
-8. [Seguridad e integridad de datos](#8-seguridad-e-integridad-de-datos)
-9. [Scripts y pruebas](#9-scripts-y-pruebas)
-10. [Limitaciones conocidas](#10-limitaciones-conocidas)
+![MySQL 8](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
+![Node.js 24](https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white)
+![Express 5](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
+![Frontend sin frameworks](https://img.shields.io/badge/Frontend-HTML%20%2B%20CSS%20%2B%20JS-F7DF1E?logo=javascript&logoColor=black)
+![Pruebas](https://img.shields.io/badge/pruebas-62%20correctas-2EA44F)
 
----
+## Qué demuestra este proyecto
 
-## 1. Funcionamiento general
+- **La base de datos manda.** 12 procedimientos almacenados y varios triggers validan cada
+  operación, usan transacciones y bloquean filas (`FOR UPDATE`). Si una regla no se cumple, el
+  procedimiento responde con `SIGNAL` y la app muestra ese mensaje tal cual.
+- **Mínimo privilegio real.** La app se conecta con `sinpe_app`, que solo tiene `SELECT` y
+  `EXECUTE`: no puede hacer `INSERT`, `UPDATE` ni `DELETE` directo en ninguna tabla.
+- **Multibanco y multirol.** Una sola app para BCR, BN, BP, BAC y Junta UCR, con roles de
+  **administrador** y **cliente**. La entidad y el cliente salen siempre de la sesión, nunca de la
+  petición.
+- **Dinero sin errores de redondeo.** Los montos viajan como texto y la pantalla calcula en
+  céntimos enteros; débito, crédito y registro ocurren en una sola transacción.
+- **Respaldo y restauración desde la app.** Respaldo automático programado (diario, semanal o
+  mensual, con hora), restauración desde un archivo elegido o subido, respaldo de seguridad previo
+  y reversión automática si la restauración falla.
+- **Seguridad cuidada.** Contraseñas con scrypt, límite de intentos de login, cookies
+  `httpOnly` + `sameSite=strict`, CSP estricta con `helmet`, SQL siempre parametrizado y datos
+  insertados en pantalla como texto (nunca `innerHTML`).
+- **Sin frameworks en el frontend.** HTML, CSS y JavaScript con módulos ES; colores de cada banco
+  tomados de sus logos oficiales.
 
-- **Una app, varios bancos.** En la vida real cada banco tiene su propia app. Aquí hay una sola,
-  con un selector de **entidad financiera** en el inicio de sesión: BCR, BN, BP, BAC o Junta UCR. Todo lo que
-  se ve y se hace queda limitado a la entidad elegida.
-- **Dos roles:**
-  - **Administrador** (personal del banco): registra clientes, cuentas y teléfonos, afilia
-    teléfonos a SINPE Móvil y consulta informes. No transfiere dinero.
-  - **Cliente**: ve sus cuentas, registra sus teléfonos, transfiere dinero (por SINPE Móvil o por
-    IBAN) y consulta sus movimientos. No afilia teléfonos.
-- **Una persona, varios bancos.** Una persona es única en el sistema (por su identificación), pero
-  puede ser cliente de varias entidades, con un usuario distinto en cada una.
-- **La base de datos manda.** Cada escritura pasa por un procedimiento almacenado que valida las
-  reglas y usa transacciones. Si algo no se cumple, el procedimiento rechaza la operación con un
-  mensaje (`SIGNAL`) y la app lo muestra tal cual en la alerta roja.
+## Tecnologías
 
-## 2. Estructura del proyecto
+| Capa          | Tecnología                                                                         |
+| ------------- | ---------------------------------------------------------------------------------- |
+| Base de datos | MySQL 8: procedimientos almacenados, triggers, transacciones                       |
+| Servidor      | Node.js 24, Express 5, `mysql2`, `express-session`, `helmet`, `express-rate-limit` |
+| Frontend      | HTML, CSS y JavaScript (módulos ES), sin frameworks                                |
+| Calidad       | `node:test` (62 pruebas), ESLint, Prettier                                         |
+
+## Arquitectura
+
+Cada capa del servidor solo llama a la de abajo:
+
+```
+Petición HTTP → routes → controllers → services → repositories → MySQL (procedimientos y triggers)
+```
 
 ```
 sinpe-app/
@@ -49,7 +61,7 @@ sinpe-app/
 ├── src/                        Servidor (Node.js + Express)
 │   ├── server.js               Arranca el servidor HTTP
 │   ├── app.js                  Middlewares, rutas y archivos estáticos
-│   ├── config/                 Variables de entorno (env.js) y pool de MySQL (db.js)
+│   ├── config/                 Variables de entorno y pool de MySQL
 │   ├── routes/                 Rutas por recurso (solo conectan ruta → controlador)
 │   ├── controllers/            Leen la petición, validan y responden
 │   ├── services/               Casos de uso (por ejemplo: transferir = CALL + leer comprobante)
@@ -57,36 +69,15 @@ sinpe-app/
 │   ├── validators/             Validación de entradas (formatos, largos, campos permitidos)
 │   ├── middlewares/            Sesión, roles, límite de intentos de login, manejo de errores
 │   └── utils/                  Errores, hash de contraseñas, nombres, mysqldump/mysql
-├── public/                     Frontend (HTML + CSS + JavaScript, sin framework)
-│   ├── index.html              Inicio de sesión
-│   ├── clients.html, accounts.html, phones.html, sinpe.html, reports.html, backups.html   Administrador
-│   ├── home.html, my-phones.html, transfers.html, movements.html            Cliente
-│   ├── css/                    tokens.css (colores del diseño) y app.css
-│   └── js/                     Un archivo por página + api.js, dom.js, format.js, layout.js
+├── public/                     Frontend: una página HTML y un módulo JS por pantalla
 ├── scripts/hash-password.js    Genera el hash de la contraseña del administrador
 ├── test/                       Pruebas automáticas (node:test)
-├── disenio/                    Capturas del prototipo de Figma (referencia)
 └── .env.example                Plantilla de configuración
 ```
 
-**Capas del servidor:** cada capa solo llama a la de abajo.
+## Base de datos
 
-```
-Petición HTTP → routes → controllers → services → repositories → MySQL (procedimientos y triggers)
-```
-
-**Colores de cada entidad:** la app toma los colores de la entidad de la sesión (y del login, al
-elegirla): BCR azul `#17479E` y rojo `#ED1C24`, BN azul `#22408A` y verde `#AFBD36`, BP naranja
-`#F47920`, BAC rojo `#C8102F`, Junta UCR azul `#075C95` y amarillo `#FCD42C`, tomados de sus
-logos oficiales. Están en `public/css/tokens.css`. Cuando se nombra otra entidad aparece su código
-en su color.
-
-**Tecnologías:** MySQL 8, Node.js 24, Express 5, `mysql2`, `express-session`, `helmet`,
-`express-rate-limit`. El frontend es HTML, CSS y JavaScript sin frameworks.
-
-## 3. Base de datos
-
-Esquema `sinpe_movil`.
+Esquema `sinpe_movil`:
 
 | Tabla                  | Qué guarda                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------ |
@@ -106,7 +97,8 @@ Esquema `sinpe_movil`.
 las transferencias (monto positivo, cuentas distintas), impiden cambiar el dueño de un teléfono
 afiliado, impiden registrar teléfonos a clientes inactivos y escriben el historial de afiliaciones.
 
-**Procedimientos (`03`):**
+<details>
+<summary><b>Procedimientos almacenados (<code>03</code>)</b></summary>
 
 | Procedimiento                 | Uso                                                                     |
 | ----------------------------- | ----------------------------------------------------------------------- |
@@ -123,257 +115,10 @@ afiliado, impiden registrar teléfonos a clientes inactivos y escriben el histor
 | `sp_transferir_iban`          | Transferir de una cuenta propia a otra propia o a una matriculada       |
 | `sp_consultar_movimientos`    | Movimientos y totales de una cuenta en un período                       |
 
-**Usuario de la aplicación:** la app se conecta como `sinpe_app`, que solo tiene permisos `SELECT`
-y `EXECUTE`. No puede hacer `INSERT`, `UPDATE` ni `DELETE`: toda escritura pasa obligatoriamente
-por un procedimiento.
+</details>
 
-## 4. Manual de instalación
-
-### Requisitos
-
-- **MySQL 8** (con acceso como `root`)
-- **Node.js 24** y **npm 11**
-
-### Pasos
-
-1. **Descargar el proyecto** y abrir una terminal en su carpeta.
-
-2. **Crear la base de datos** como `root`, cargando los tres scripts **en orden y por separado**:
-
-   ```sh
-   mysql -u root -p --default-character-set=utf8mb4 < db/01_esquema_y_datos.sql
-   mysql -u root -p --default-character-set=utf8mb4 < db/02_triggers.sql
-   mysql -u root -p --default-character-set=utf8mb4 < db/03_procedimientos.sql
-   ```
-
-   - En **PowerShell** el símbolo `<` no funciona; use `cmd /c` en cada línea, por ejemplo:
-     `cmd /c "mysql -u root -p --default-character-set=utf8mb4 < db\01_esquema_y_datos.sql"`.
-   - `--default-character-set=utf8mb4` hace que las tildes de los mensajes se guarden bien.
-   - No los encadene con `-e "source a; source b"`: por el `DELIMITER`, los procedimientos no se
-     instalan.
-   - `01` **borra y recrea la base**. Para volver a los datos de prueba, cargue de nuevo `01`, `02` y
-     `03`. Los usuarios `sinpe_app` y `sinpe_backup` y sus contraseñas se conservan.
-
-   Para el módulo **Respaldos**, cargue también `04` (una sola vez). Crea el usuario `sinpe_backup`,
-   que solo puede trabajar sobre la base `sinpe_movil`:
-
-   ```sh
-   mysql -u root -p < db/04_usuario_respaldos.sql
-   ```
-
-3. **Cambiar la contraseña de ejemplo** del usuario `sinpe_app` (viene en `03_procedimientos.sql`):
-
-   ```sql
-   ALTER USER 'sinpe_app'@'localhost' IDENTIFIED BY '<su contraseña>';
-   ALTER USER 'sinpe_backup'@'localhost' IDENTIFIED BY '<otra contraseña>';
-   ```
-
-4. **Crear el archivo `.env`** a partir de la plantilla y completar cada valor:
-
-   ```sh
-   cp .env.example .env
-   ```
-
-   | Variable             | Valor                                                 |
-   | -------------------- | ----------------------------------------------------- |
-   | `NODE_ENV`           | `development`                                         |
-   | `PORT`               | `3000`                                                |
-   | `DB_HOST`, `DB_PORT` | `localhost`, `3306`                                   |
-   | `DB_USER`            | `sinpe_app`                                           |
-   | `DB_PASSWORD`        | La contraseña del paso 3                              |
-   | `DB_NAME`            | `sinpe_movil`                                         |
-   | `SESSION_SECRET`     | Al menos 32 caracteres al azar (ver el comando abajo) |
-   | `APP_USER`           | `admin`                                               |
-   | `APP_PASSWORD_HASH`  | Ver el paso 6                                         |
-   | `BACKUP_DB_USER`     | `sinpe_backup` (módulo Respaldos; vacío lo desactiva) |
-   | `BACKUP_DB_PASSWORD` | La contraseña de `sinpe_backup` del paso 3            |
-   | `MYSQL_BIN_DIR`      | `C:\Program Files\MySQL\MySQL Server 8.0\bin`         |
-   | `BACKUP_DIR`         | `respaldos`                                           |
-
-   Para generar `SESSION_SECRET`:
-   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-
-5. **Instalar las dependencias:** `npm install`
-
-6. **Definir la contraseña del administrador:** ejecute `npm run hash-password`, escriba la
-   contraseña (para la demostración: `Juntaucr2026`) y pegue la línea `APP_PASSWORD_HASH=...` que
-   imprime en el `.env`. Cada variable debe aparecer una sola vez.
-
-7. **Iniciar:** `npm run dev` y abrir <http://localhost:3000>.
-
-Si falta alguna variable, la app no arranca y dice cuál falta.
-
-## 5. Credenciales de prueba
-
-| Rol           | Entidad                   | Usuario            | Contraseña     |
-| ------------- | ------------------------- | ------------------ | -------------- |
-| Administrador | Cualquiera (la que elija) | `admin`            | `Juntaucr2026` |
-| Cliente       | Donde tenga cuenta        | Ver la lista abajo | `Cliente2026`  |
-
-El usuario de un cliente es **primer nombre + punto + primer apellido**, en minúsculas y sin
-tildes. Solo puede entrar en las entidades donde tiene cuenta:
-
-| Entidad      | Clientes (cuenta)                                                                                                                                                                                                                                                             |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **BCR**      | `leonardo.aguilar` (001), `cristopher.buso` (005), `dilan.gonzalez` (009), `john.marin` (013), `jandany.moya` (017), `steven.ramirez` (021), `hugo.arauz` (026 USD), `cristopher.mora` (030 USD), `ivan.altamirano` (033), `kendall.montero` (035), `scarlette.rosales` (036) |
-| **BN**       | `ivan.altamirano` (002), `keity.chavarria` (006), `reiko.gonzalez` (010), `kendall.montero` (014), `astrid.munguia` (018), `scarlette.rosales` (022), `hugo.gurdian` (029 USD), `darlin.chaves` (034 BLOQUEADA)                                                               |
-| **BP**       | `hugo.arauz` (003), `darlin.chaves` (007), `jefferson.granados` (011), `cristopher.mora` (015), `lucia.palacio` (019), `bayron.sanchez` (023), `leonardo.aguilar` (025 USD), `dilan.gonzalez` (028 USD), `steven.ramirez` (032 USD)                                           |
-| **BAC**      | `hairon.azofeifa` (004), `mariela.chinchilla` (008), `hugo.gurdian` (012), `camila.mora` (016), `diego.pastran` (020), `diego.sanchez` (024), `keity.chavarria` (027 USD), `astrid.munguia` (031 USD)                                                                         |
-| **JUNTAUCR** | `leonardo.aguilar` (037), `ivan.altamirano` (038), `hugo.arauz` (039 USD)                                                                                                                                                                                                     |
-
-Las cuentas son en colones salvo que diga USD. Los IBAN siguen el formato `CR12` + `0` + código
-del banco + número de cuenta en 14 dígitos; por ejemplo, la 001 del BCR es
-`CR12015200000000000001`. La Junta UCR no tiene código IBAN propio en la vida real (usa cuentas en
-el BN, el BCR y el BP), así que aquí usa el código ficticio **999**: su cuenta 037 es
-`CR12099900000000000037`.
-
-**Usuarios útiles para la demostración:**
-
-- `leonardo.aguilar` (BCR): ve los botones de **casos de prueba** en Transferir.
-- `jandany.moya` (BCR): cuenta 017 con ₡507 847, para probar el **límite diario** (₡200 000).
-- `hugo.arauz` (BCR): solo tiene una cuenta en **dólares**.
-- `ivan.altamirano` (BN y BCR): su número `8000-0002` está afiliado en el BN.
-- **Junta UCR:** `ivan.altamirano` tiene `7000-0002` afiliado a su cuenta 038, así que se le puede
-  enviar SINPE Móvil desde cualquier banco. El administrador puede afiliar `6000-0001` (de Leonardo,
-  sin afiliar) a la cuenta 037, y con `hugo.arauz` reproducir "cuenta no válida" (039 USD).
-
-## 6. Manual de usuario
-
-### Iniciar sesión
-
-1. Elija la **entidad financiera**, escriba el **usuario** y la **contraseña** y pulse **Entrar**.
-2. El administrador llega a **Clientes** y el cliente a **Inicio**.
-3. Si algo está mal, el mensaje es siempre el mismo ("Usuario o contraseña incorrectos para la
-   entidad seleccionada"), sin decir qué dato falló. Después de 5 intentos fallidos, el acceso se
-   bloquea 15 minutos.
-4. La sesión se cierra sola tras **15 minutos sin actividad**, o con **Cerrar sesión**.
-
-El encabezado muestra siempre la entidad, el rol y el usuario.
-
-### Administrador
-
-Menú: **Clientes · Cuentas IBAN · Teléfonos · SINPE Móvil · Informes · Respaldos**. Todas las listas tienen
-estadísticas arriba y un buscador.
-
-**Clientes**
-
-- La lista muestra los clientes de la entidad con su usuario y cuántas cuentas y teléfonos tienen.
-- **Registrar cliente:** identificación, nombres, apellidos, correo, **usuario** (3 a 50
-  caracteres: minúsculas, números, punto o guion bajo) y **contraseña temporal** (mínimo 8
-  caracteres). El cliente se crea ACTIVO. El usuario `admin` está reservado.
-- Si la persona ya es cliente de **otro banco**, se agrega a este con su misma identificación. Los
-  nombres y el correo escritos deben coincidir con los que ya tiene; si no, se rechaza con "Los
-  datos no coinciden con la persona registrada con esa identificación".
-
-**Cuentas IBAN**
-
-- Lista agrupada por titular: pulse la flecha de una persona para ver sus cuentas, con saldo y
-  estado.
-- **Registrar cuenta:** titular (clientes activos), moneda, **IBAN**, saldo inicial y fecha de
-  apertura. El botón **Generar** llena el siguiente IBAN libre del banco; también se puede escribir
-  a mano. La entidad no se elige: es la de la sesión. La cuenta se crea ACTIVA.
-- **Cambiar estado** (en cada cuenta, al desplegar al titular): ACTIVA, INACTIVA o BLOQUEADA. Una
-  cuenta que no está ACTIVA **no envía ni recibe** transferencias y no se puede afiliar, pero sus
-  afiliaciones a SINPE Móvil **se conservan** (los envíos a ese número fallan hasta reactivarla).
-  Para pasar a INACTIVA el saldo debe ser cero; BLOQUEADA no lo exige.
-
-**Teléfonos**
-
-- Lista agrupada por titular: la flecha despliega sus números, si están afiliados y a qué cuenta
-  (IBAN completo). Solo aparecen los teléfonos afiliados en este banco o sin afiliar.
-- **Registrar teléfono:** titular y número de 8 dígitos. Registrar **no** afilia. Si el número ya
-  es de ese cliente o de otra persona, se rechaza.
-- **Editar** (en cada número): cambia el titular. No se permite si el teléfono está afiliado ("No
-  se puede cambiar el titular de un teléfono afiliado"): primero hay que desafiliarlo.
-
-**SINPE Móvil**
-
-- Lista agrupada por titular de las afiliaciones de este banco, con las acciones de cada número.
-- **Afiliar teléfono:** elija el teléfono y la cuenta. Los selects muestran todos los números y
-  cuentas del banco con su estado, para que la base de datos sea la que rechaza las combinaciones
-  inválidas: cuenta de otra persona, cuenta en dólares o bloqueada, número ya afiliado aquí ("Use
-  Cambiar cuenta") o en otro banco ("Debe desafiliarse allá primero").
-- **Cambiar de cuenta:** pasa el número a otra cuenta en una sola transacción; si la nueva no es
-  válida, se conserva la afiliación original.
-- **Desafiliar:** pide confirmación y deja el evento DESAFILIACION en el historial.
-
-**Informes**
-
-- **Afiliaciones de un teléfono:** historial de AFILIACION y DESAFILIACION en cuentas de este banco.
-- **Teléfonos asociados a una cuenta:** números afiliados hoy a una cuenta.
-
-**Respaldos** (Laboratorio Copia de Seguridad, ejercicio 3)
-
-- **Respaldo automático programado:** elija la frecuencia (**Diario**, **Semanal** con el día de
-  la semana o **Mensual** con el día del mes) y la **hora**. Al presionar **Guardar y activar** el
-  respaldo queda programado de inmediato y el panel muestra la fecha del próximo. La programación
-  se guarda y se vuelve a activar sola cuando el servidor arranca. En un mes con menos días (por
-  ejemplo, día 31 en febrero) se respalda el último día del mes.
-- **Respaldar ahora:** crea un respaldo en el momento.
-- Cada respaldo ejecuta `mysqldump` con las mismas opciones del ejercicio 2
-  (`--single-transaction --no-tablespaces --routines --triggers --events --set-gtid-purged=OFF`):
-  estructura, datos, procedimientos, triggers y eventos.
-- **Restaurar:** elija un archivo de la carpeta de respaldos o suba un `.sql` de su computadora
-  (de `mysqldump` o de Workbench), marque la confirmación y presione **Restaurar**. Antes de
-  restaurar se guarda un respaldo de seguridad de los datos actuales. Si la restauración falla a la
-  mitad, ese respaldo se restaura solo y la base queda como estaba (el mensaje y el historial dicen
-  "Se revirtió"). Se rechaza un archivo que no sea un respaldo de MySQL o que tenga un `USE` o un
-  `CREATE/DROP DATABASE` de otra base.
-- Si la app estaba apagada a la hora de un respaldo automático, al arrancar hace uno de
-  recuperación (en el historial dice "Recupera el de…"). Se hace uno solo, aunque se hayan perdido
-  varios.
-- **Archivos de respaldo** (con botón Descargar) e **Historial** de respaldos, restauraciones y
-  cambios de programación, con su resultado.
-- Requiere en el `.env`: `BACKUP_DB_USER=sinpe_backup` y `BACKUP_DB_PASSWORD` (el usuario de
-  `db/04_usuario_respaldos.sql`; `sinpe_app` no tiene permisos para respaldar ni restaurar),
-  `MYSQL_BIN_DIR` (carpeta de `mysqldump.exe`) y `BACKUP_DIR` (carpeta de los respaldos, por
-  defecto `respaldos/`).
-
-### Cliente
-
-Menú: **Inicio · Mis teléfonos · Transferir · Mis movimientos**.
-
-**Inicio:** saludo, cantidad de cuentas, teléfonos y teléfonos afiliados; tarjetas de las cuentas
-con saldo; los últimos 5 movimientos. Botones para Transferir, Registrar teléfono y Ver todos.
-
-**Mis teléfonos:** sus números, si están afiliados y a qué cuenta (u "Otra entidad" con el código
-del banco si están afiliados en otro). **Registrar teléfono** agrega un número propio; no lo afilia.
-**Afiliar a SINPE** (en cada número sin afiliar) abre una ventana para elegir una de sus cuentas en
-colones y ACTIVAS de este banco; al confirmar, el número queda afiliado, igual que si lo hiciera el
-administrador. Si el número ya está afiliado en otro banco, debe desafiliarse allá primero.
-**Desafiliar** (en cada número afiliado en este banco) pide confirmación y quita la afiliación; el
-evento queda en el historial. Un número afiliado en otro banco solo se desafilia entrando a ese banco.
-
-**Transferir** (tres pasos: Datos → Revisión → Comprobante)
-
-1. Elija la pestaña:
-   - **Por teléfono (SINPE Móvil):** el dinero sale de **una de sus cuentas en colones** y llega a
-     la cuenta que el destinatario tiene afiliada a su número, en cualquier banco.
-   - **Por IBAN:** de una de sus cuentas a otra cuenta propia o a una cuenta de un tercero
-     **matriculada**, de la misma moneda. Si el IBAN es de un tercero y no está matriculado,
-     aparece **Matricular cuenta** en la misma pantalla: se hace una sola vez y la cuenta queda
-     lista para las siguientes transferencias. Si la cuenta es de **otro banco**, al matricularla se
-     pide la **identificación del titular** y debe coincidir.
-2. Al completar el número o el IBAN, la app muestra el **nombre y banco del destinatario**.
-3. Escriba el **monto** (hasta 2 decimales) y, si quiere, un **detalle**. En SINPE Móvil se ve
-   cuánto le queda disponible hoy de su límite diario.
-4. **Revisar transferencia** muestra el resumen y el saldo que le quedaría. **Confirmar
-   transferencia** la envía; los botones se bloquean mientras se procesa, así que no se envía dos
-   veces.
-5. El **comprobante** muestra el número de referencia (fecha + código del banco + consecutivo), el
-   monto, el origen, el destino, la comisión (siempre ₡0) y los saldos de las dos cuentas antes y
-   después, con el total de ambas, que se conserva (informe 6 del enunciado).
-6. Si la base de datos rechaza la transferencia, la app vuelve a Datos con el mensaje y el campo en
-   rojo.
-
-**Casos de prueba** (solo para `leonardo.aguilar` en el BCR): botones que llenan el formulario con
-los casos del enunciado: misma cuenta, permitida, otra moneda y saldo insuficiente.
-
-**Mis movimientos:** elija la cuenta y el período (por defecto, el mes actual). La tabla muestra
-fecha, tipo (Enviada / Recibida), contraparte y monto, con el total enviado y recibido del período.
-Se actualiza al cambiar cualquier filtro.
-
-## 7. Reglas de negocio
+<details>
+<summary><b>Reglas de negocio y dónde se aplican</b></summary>
 
 **Teléfonos y afiliación (SINPE Móvil)**
 
@@ -407,61 +152,291 @@ Orden de validación de SINPE Móvil: origen del cliente → origen ACTIVO y en 
 registrado y afiliado → destino ACTIVO → cuentas distintas → monto positivo → límite diario →
 saldo.
 
-## 8. Seguridad e integridad de datos
+</details>
+
+## Instalación
+
+**Requisitos:** MySQL 8 (con acceso como `root`), Node.js 24 y npm 11.
+
+1. **Clonar el proyecto:**
+
+   ```sh
+   git clone https://github.com/CrisSalas07/sinpe-app.git
+   cd sinpe-app
+   ```
+
+2. **Crear la base de datos** como `root`, cargando los scripts **en orden y por separado**:
+
+   ```sh
+   mysql -u root -p --default-character-set=utf8mb4 < db/01_esquema_y_datos.sql
+   mysql -u root -p --default-character-set=utf8mb4 < db/02_triggers.sql
+   mysql -u root -p --default-character-set=utf8mb4 < db/03_procedimientos.sql
+   mysql -u root -p < db/04_usuario_respaldos.sql
+   ```
+
+   - Si la consola dice que **`mysql` no se reconoce como comando**, MySQL no está en el `PATH`.
+     Vea [Agregar MySQL al PATH](#agregar-mysql-al-path) abajo.
+   - En **PowerShell** el símbolo `<` no funciona; use `cmd /c` en cada línea, por ejemplo:
+     `cmd /c "mysql -u root -p --default-character-set=utf8mb4 < db\01_esquema_y_datos.sql"`.
+   - `--default-character-set=utf8mb4` hace que las tildes de los mensajes se guarden bien.
+   - No los encadene con `-e "source a; source b"`: por el `DELIMITER`, los procedimientos no se
+     instalan.
+   - `01` **borra y recrea la base**. Para volver a los datos de prueba, cargue de nuevo `01`, `02`
+     y `03`. Los usuarios `sinpe_app` y `sinpe_backup` y sus contraseñas se conservan.
+   - `04` se carga una sola vez: crea `sinpe_backup`, el usuario del módulo Respaldos, que solo
+     puede trabajar sobre `sinpe_movil`.
+
+3. **Cambiar las contraseñas de ejemplo** de los usuarios de MySQL:
+
+   ```sql
+   ALTER USER 'sinpe_app'@'localhost' IDENTIFIED BY '<su contraseña>';
+   ALTER USER 'sinpe_backup'@'localhost' IDENTIFIED BY '<otra contraseña>';
+   ```
+
+4. **Crear el `.env`** a partir de la plantilla (`cp .env.example .env`) y completar cada valor:
+
+   | Variable             | Valor                                                 |
+   | -------------------- | ----------------------------------------------------- |
+   | `NODE_ENV`           | `development`                                         |
+   | `PORT`               | `3000`                                                |
+   | `DB_HOST`, `DB_PORT` | `localhost`, `3306`                                   |
+   | `DB_USER`            | `sinpe_app`                                           |
+   | `DB_PASSWORD`        | La contraseña del paso 3                              |
+   | `DB_NAME`            | `sinpe_movil`                                         |
+   | `SESSION_SECRET`     | Al menos 32 caracteres al azar (ver el comando abajo) |
+   | `APP_USER`           | `admin`                                               |
+   | `APP_PASSWORD_HASH`  | Ver el paso 6                                         |
+   | `BACKUP_DB_USER`     | `sinpe_backup` (módulo Respaldos; vacío lo desactiva) |
+   | `BACKUP_DB_PASSWORD` | La contraseña de `sinpe_backup` del paso 3            |
+   | `MYSQL_BIN_DIR`      | `C:\Program Files\MySQL\MySQL Server 8.0\bin`         |
+   | `BACKUP_DIR`         | `respaldos`                                           |
+
+   Para generar `SESSION_SECRET`:
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+
+5. **Instalar las dependencias:** `npm install`
+
+6. **Definir la contraseña del administrador:** ejecute `npm run hash-password`, escriba la
+   contraseña (para la demostración: `Juntaucr2026`) y pegue la línea `APP_PASSWORD_HASH=...` que
+   imprime en el `.env`.
+
+7. **Iniciar:** `npm run dev` y abrir <http://localhost:3000>.
+
+Si falta alguna variable, la app no arranca y dice cuál falta.
+
+### Agregar MySQL al PATH
+
+En Windows, el instalador de MySQL no siempre agrega `mysql.exe` al `PATH`. Si la consola dice
+**"`mysql` no se reconoce como un comando interno o externo"**, agregue la carpeta `bin` de MySQL
+Server (normalmente `C:\Program Files\MySQL\MySQL Server 8.0\bin`).
+
+**Solo para la ventana abierta** (se pierde al cerrarla):
+
+```bat
+:: CMD
+set PATH=%PATH%;C:\Program Files\MySQL\MySQL Server 8.0\bin
+```
+
+```powershell
+# PowerShell
+$env:Path += ";C:\Program Files\MySQL\MySQL Server 8.0\bin"
+```
+
+**De forma permanente:** busque _"variables de entorno"_ en el menú Inicio → **Editar las
+variables de entorno del sistema** → **Variables de entorno** → en _Variables de usuario_
+seleccione **Path** → **Editar** → **Nuevo** → pegue la ruta → **Aceptar** en todas las ventanas.
+Cierre y vuelva a abrir la consola.
+
+Para comprobarlo: `mysql --version`. No use `setx PATH ...`: puede recortar el `PATH` existente.
+
+## Credenciales de prueba
+
+| Rol           | Entidad                   | Usuario                              | Contraseña     |
+| ------------- | ------------------------- | ------------------------------------ | -------------- |
+| Administrador | Cualquiera (la que elija) | `admin`                              | `Juntaucr2026` |
+| Cliente       | Donde tenga cuenta        | Por ejemplo `leonardo.aguilar` (BCR) | `Cliente2026`  |
+
+El usuario de un cliente es **primer nombre + punto + primer apellido**, en minúsculas y sin
+tildes. Solo puede entrar en las entidades donde tiene cuenta.
+
+<details>
+<summary><b>Todos los clientes de prueba y usuarios útiles para la demostración</b></summary>
+
+| Entidad      | Clientes (cuenta)                                                                                                                                                                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **BCR**      | `leonardo.aguilar` (001), `cristopher.buso` (005), `dilan.gonzalez` (009), `john.marin` (013), `jandany.moya` (017), `steven.ramirez` (021), `hugo.arauz` (026 USD), `cristopher.mora` (030 USD), `ivan.altamirano` (033), `kendall.montero` (035), `scarlette.rosales` (036) |
+| **BN**       | `ivan.altamirano` (002), `keity.chavarria` (006), `reiko.gonzalez` (010), `kendall.montero` (014), `astrid.munguia` (018), `scarlette.rosales` (022), `hugo.gurdian` (029 USD), `darlin.chaves` (034 BLOQUEADA)                                                               |
+| **BP**       | `hugo.arauz` (003), `darlin.chaves` (007), `jefferson.granados` (011), `cristopher.mora` (015), `lucia.palacio` (019), `bayron.sanchez` (023), `leonardo.aguilar` (025 USD), `dilan.gonzalez` (028 USD), `steven.ramirez` (032 USD)                                           |
+| **BAC**      | `hairon.azofeifa` (004), `mariela.chinchilla` (008), `hugo.gurdian` (012), `camila.mora` (016), `diego.pastran` (020), `diego.sanchez` (024), `keity.chavarria` (027 USD), `astrid.munguia` (031 USD)                                                                         |
+| **JUNTAUCR** | `leonardo.aguilar` (037), `ivan.altamirano` (038), `hugo.arauz` (039 USD)                                                                                                                                                                                                     |
+
+Las cuentas son en colones salvo que diga USD. Los IBAN siguen el formato `CR12` + `0` + código
+del banco + número de cuenta en 14 dígitos; por ejemplo, la 001 del BCR es
+`CR12015200000000000001`. La Junta UCR no tiene código IBAN propio en la vida real (usa cuentas en
+el BN, el BCR y el BP), así que aquí usa el código ficticio **999**: su cuenta 037 es
+`CR12099900000000000037`.
+
+- `leonardo.aguilar` (BCR): ve los botones de **casos de prueba** en Transferir.
+- `jandany.moya` (BCR): cuenta 017 con ₡507 847, para probar el **límite diario** (₡200 000).
+- `hugo.arauz` (BCR): solo tiene una cuenta en **dólares**.
+- `ivan.altamirano` (BN y BCR): su número `8000-0002` está afiliado en el BN.
+- **Junta UCR:** `ivan.altamirano` tiene `7000-0002` afiliado a su cuenta 038, así que se le puede
+  enviar SINPE Móvil desde cualquier banco. El administrador puede afiliar `6000-0001` (de Leonardo,
+  sin afiliar) a la cuenta 037, y con `hugo.arauz` reproducir "cuenta no válida" (039 USD).
+
+</details>
+
+## Manual de usuario
+
+**Iniciar sesión:** elija la **entidad financiera**, escriba el usuario y la contraseña y pulse
+**Entrar**. El administrador llega a **Clientes** y el cliente a **Inicio**. El mensaje de error es
+siempre el mismo, sin decir qué dato falló; tras 5 intentos fallidos el acceso se bloquea 15
+minutos. La sesión se cierra sola tras 15 minutos sin actividad.
+
+<details>
+<summary><b>Administrador: Clientes · Cuentas IBAN · Teléfonos · SINPE Móvil · Informes · Respaldos</b></summary>
+
+Todas las listas tienen estadísticas arriba y un buscador.
+
+**Clientes**
+
+- La lista muestra los clientes de la entidad con su usuario y cuántas cuentas y teléfonos tienen.
+- **Registrar cliente:** identificación, nombres, apellidos, correo, **usuario** (3 a 50
+  caracteres: minúsculas, números, punto o guion bajo) y **contraseña temporal** (mínimo 8
+  caracteres). El cliente se crea ACTIVO. El usuario `admin` está reservado.
+- Si la persona ya es cliente de **otro banco**, se agrega a este con su misma identificación. Los
+  nombres y el correo escritos deben coincidir con los que ya tiene.
+
+**Cuentas IBAN**
+
+- Lista agrupada por titular: la flecha de cada persona despliega sus cuentas, con saldo y estado.
+- **Registrar cuenta:** titular, moneda, **IBAN**, saldo inicial y fecha de apertura. **Generar**
+  llena el siguiente IBAN libre del banco. La cuenta se crea ACTIVA en el banco de la sesión.
+- **Cambiar estado:** ACTIVA, INACTIVA o BLOQUEADA. Una cuenta que no está ACTIVA no envía ni recibe
+  transferencias y no se puede afiliar, pero conserva sus afiliaciones. INACTIVA exige saldo cero.
+
+**Teléfonos**
+
+- Lista agrupada por titular, con los números afiliados en este banco o sin afiliar.
+- **Registrar teléfono:** titular y número de 8 dígitos. Registrar **no** afilia.
+- **Editar:** cambia el titular, salvo que el teléfono esté afiliado.
+
+**SINPE Móvil**
+
+- **Afiliar teléfono:** elija el teléfono y la cuenta. Los selects muestran todos los números y
+  cuentas con su estado, para que sea la base de datos la que rechaza las combinaciones inválidas.
+- **Cambiar de cuenta:** pasa el número a otra cuenta en una sola transacción; si la nueva no es
+  válida, se conserva la original.
+- **Desafiliar:** pide confirmación y deja el evento en el historial.
+
+**Informes:** historial de afiliaciones de un teléfono y teléfonos afiliados a una cuenta.
+
+**Respaldos**
+
+- **Respaldo automático programado:** **Diario**, **Semanal** (con el día) o **Mensual** (con el
+  día del mes), a la **hora** elegida. **Guardar y activar** lo programa de inmediato y se vuelve a
+  activar solo al arrancar el servidor. Un día 31 en un mes más corto se respalda el último día.
+- **Respaldar ahora:** crea un respaldo en el momento con `mysqldump`
+  (`--single-transaction --routines --triggers --events`).
+- **Restaurar:** elija un archivo de la carpeta o suba un `.sql` (de `mysqldump` o Workbench),
+  marque la confirmación y presione **Restaurar**. Antes se guarda un respaldo de seguridad; si la
+  restauración falla a la mitad, la base vuelve sola a como estaba ("Se revirtió").
+- Si la app estaba apagada a la hora de un respaldo automático, al arrancar hace uno de
+  recuperación.
+- **Archivos de respaldo** (con Descargar) e **Historial** de todas las operaciones.
+
+</details>
+
+<details>
+<summary><b>Cliente: Inicio · Mis teléfonos · Transferir · Mis movimientos</b></summary>
+
+**Inicio:** cuentas con saldo, teléfonos y los últimos 5 movimientos.
+
+**Mis teléfonos:** sus números y a qué cuenta están afiliados (u "Otra entidad"). Puede registrar
+números propios, **afiliarlos** a una de sus cuentas en colones y ACTIVAS de este banco, y
+**desafiliarlos**.
+
+**Transferir** (Datos → Revisión → Comprobante)
+
+1. **Por teléfono (SINPE Móvil):** desde una de sus cuentas en colones a la cuenta afiliada al
+   número, en cualquier banco. **Por IBAN:** a una cuenta propia o a una de un tercero
+   **matriculada**, de la misma moneda. Si no está matriculada, aparece **Matricular cuenta**; si
+   es de otro banco, se pide la identificación del titular.
+2. La app muestra el **nombre y banco del destinatario** y, en SINPE Móvil, cuánto le queda del
+   límite diario.
+3. **Revisar** muestra el resumen y el saldo que quedaría; **Confirmar** la envía una sola vez.
+4. El **comprobante** muestra la referencia, el monto, el origen, el destino y los saldos de las
+   dos cuentas antes y después.
+
+**Casos de prueba** (solo `leonardo.aguilar` en el BCR): botones que llenan el formulario con los
+casos del enunciado.
+
+**Mis movimientos:** filtra por cuenta y período, con el total enviado y recibido.
+
+</details>
+
+<details>
+<summary><b>Restaurar la base desde consola (cuando la app no puede entrar)</b></summary>
+
+Si la base `sinpe_movil` se borró o se dañó, la app no deja entrar y el módulo Respaldos no sirve.
+Se restaura como `root` en PowerShell, desde la carpeta del proyecto (si `mysql` no se reconoce,
+vea [Agregar MySQL al PATH](#agregar-mysql-al-path)). Los respaldos de la app no traen
+`CREATE DATABASE`, así que primero se crea la base vacía:
+
+```powershell
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS sinpe_movil CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
+cmd /c "mysql -u root -p --comments --default-character-set=utf8mb4 sinpe_movil < respaldos\<archivo>.sql"
+mysql -u root -p -e "USE sinpe_movil; SHOW TABLES; SHOW PROCEDURE STATUS WHERE Db='sinpe_movil';"
+```
+
+Luego reinicie la app. No hace falta recrear los usuarios: sus permisos están dados sobre
+`sinpe_movil.*` y MySQL los conserva aunque la base se borre. Sin ningún respaldo, cargue de
+nuevo `01`, `02` y `03` como en la instalación.
+
+</details>
+
+## Seguridad
 
 - **Contraseñas:** solo se guarda su hash (scrypt con sal al azar) y se compara en tiempo
-  constante. El mensaje de error de login es siempre el mismo y hay un límite de 5 intentos
-  fallidos cada 15 minutos por IP.
+  constante. Límite de 5 intentos fallidos cada 15 minutos por IP.
 - **Sesión:** cookie `httpOnly` y `sameSite=strict`, nueva sesión al entrar, cierre a los 15
   minutos sin actividad.
-- **Permisos:** cada ruta exige sesión y rol. La entidad y el cliente salen **siempre de la
-  sesión**; si una petición trae `entityId` o `clientId`, se rechaza.
+- **Permisos:** cada ruta exige sesión y rol. Si una petición trae `entityId` o `clientId`, se
+  rechaza: esos datos salen siempre de la sesión.
 - **Entradas:** el servidor valida cada dato (formatos, largos, fechas reales) y rechaza campos que
-  no esperaba. El SQL usa siempre parámetros (`?`), nunca texto armado.
-- **Pantalla:** los datos se insertan como texto (nunca `innerHTML`); política de seguridad de
-  contenido estricta con `helmet`.
-- **Errores:** el usuario nunca ve SQL ni detalles internos; los mensajes de los procedimientos se
-  muestran tal cual.
-- **Dinero:** nunca se usa como número decimal de JavaScript: viaja como texto y los cálculos de
-  pantalla usan céntimos enteros.
-- **Mínimo privilegio:** el usuario `sinpe_app` no puede escribir directamente en las tablas.
+  no esperaba. El SQL usa siempre parámetros (`?`).
+- **Pantalla:** los datos se insertan como texto (nunca `innerHTML`), con una política de seguridad
+  de contenido estricta.
+- **Errores:** el usuario nunca ve SQL ni detalles internos.
 - **Respaldos:** solo el administrador entra al módulo. `mysqldump` y `mysql` se ejecutan sin
-  consola y con lista de argumentos; la contraseña va en un archivo temporal, nunca en la línea
-  de comandos. Los nombres de archivo no pueden salir de la carpeta de respaldos.
-- **Restaurar no usa `root`:** restaurar ejecuta todo el SQL del archivo, así que se hace con
-  `sinpe_backup`, que solo tiene permisos sobre `sinpe_movil`. Si un archivo trae un `GRANT`, un
-  `CREATE USER` o un procedimiento que intenta darse permisos, MySQL lo rechaza ("Access denied") y
-  la base se revierte. Antes de restaurar, la app quita los `DEFINER=...` del archivo: los
-  procedimientos y triggers restaurados quedan a nombre de `sinpe_backup` (no de `root`) y siguen
-  funcionando igual. **No borre el usuario `sinpe_backup`:** sin él, esos procedimientos dejan de
-  funcionar. `04_usuario_respaldos.sql` explica cada permiso que se le da.
+  consola y con lista de argumentos; la contraseña va en un archivo temporal, nunca en la línea de
+  comandos. Restaurar se hace con `sinpe_backup`, que solo tiene permisos sobre `sinpe_movil`: si un
+  archivo trae un `GRANT` o un `CREATE USER`, MySQL lo rechaza y la base se revierte.
 
-## 9. Scripts y pruebas
+## Scripts
 
-| Comando                 | Qué hace                                                                           |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| `npm run dev`           | Inicia el servidor con `.env` y lo reinicia al cambiar archivos                    |
-| `npm test`              | Pruebas automáticas de `test/` (validadores, formato, roles, contraseñas, errores) |
-| `npm run lint`          | Revisión de código con ESLint                                                      |
-| `npm run format`        | Formato con Prettier                                                               |
-| `npm run hash-password` | Genera el hash de la contraseña del administrador                                  |
+| Comando                 | Qué hace                                                         |
+| ----------------------- | ---------------------------------------------------------------- |
+| `npm run dev`           | Inicia el servidor con `.env` y lo reinicia al cambiar archivos  |
+| `npm test`              | Pruebas automáticas (validadores, roles, contraseñas, respaldos) |
+| `npm run lint`          | Revisión de código con ESLint                                    |
+| `npm run format`        | Formato con Prettier                                             |
+| `npm run hash-password` | Genera el hash de la contraseña del administrador                |
 
-## 10. Limitaciones conocidas
+## Limitaciones conocidas
 
-- **Sesiones en memoria:** se pierden al reiniciar el servidor. Sirve para esta demostración local.
+- **Sesiones en memoria:** se pierden al reiniciar el servidor; sirve para una demostración local.
 - **Transferencias cruzadas simultáneas:** si A le envía a B y B a A en el mismo instante, MySQL
   puede cancelar una de las dos (no se mueve dinero) y basta con reintentarla.
-- **Credenciales visibles en el login:** la pista de usuarios de prueba está a propósito para la
-  demostración; debe quitarse antes de usar la app en otro lugar.
 - **Búsqueda del destinatario:** un cliente puede consultar el nombre y el banco de un número o
   IBAN, como en el servicio real; esa consulta no tiene límite de intentos.
-- **Sin comisión:** la comisión se muestra siempre en ₡0 (simplificación del prototipo).
-- **Contraseña temporal:** no se obliga a cambiarla en el primer ingreso.
-- **Respaldo automático:** solo corre mientras el servidor está encendido. Si estaba apagado a la
-  hora programada, al arrancar se hace un solo respaldo de recuperación, aunque se hayan perdido
-  varios. La hora es la del servidor. Los respaldos no se borran solos.
-- **Restaurar no borra lo nuevo:** el respaldo reemplaza las tablas, procedimientos y triggers que
-  contiene, pero una tabla o un procedimiento creado después del respaldo sigue ahí. Con el esquema
-  fijo de este proyecto no ocurre. Borrar la base completa antes de restaurar sería más riesgoso.
-- **Quien restaura puede dañar `sinpe_movil`:** restaurar es reemplazar la base, así que un archivo
-  malicioso puede cambiar sus datos o sus procedimientos. Lo que no puede es salirse de esa base.
+- **Simplificaciones:** la comisión siempre es ₡0 y la contraseña temporal no se obliga a cambiar.
+- **Respaldo automático:** solo corre mientras el servidor está encendido, usa la hora del servidor
+  y los respaldos no se borran solos.
+- **Restaurar no borra lo nuevo:** una tabla o un procedimiento creado después del respaldo sigue
+  ahí. Con el esquema fijo de este proyecto no ocurre.
+
+## Créditos
+
+Proyecto académico del curso Bases de Datos II, Universidad de Costa Rica, Sede del Sur (2026).
+Los nombres y colores de los bancos se usan solo con fines educativos; los datos son ficticios.
