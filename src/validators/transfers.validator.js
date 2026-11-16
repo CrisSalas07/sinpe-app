@@ -24,24 +24,26 @@ export function validateSinpeTransfer(body) {
   };
 }
 
-/**
- * Transfer by IBAN: origin and destination IBANs, amount (string), optional detail and the
- * beneficiary's identification (the procedure requires it when the destination is another entity).
- */
+/** Transfer by IBAN: origin and destination IBANs, amount (string) and optional detail. */
 export function validateIbanTransfer(body) {
-  assertOnlyFields(body, [
-    'originIban',
-    'destinationIban',
-    'amount',
-    'detail',
-    'destinationIdentification',
-  ]);
+  assertOnlyFields(body, ['originIban', 'destinationIban', 'amount', 'detail']);
   return {
     originIban: requireIban(body, 'originIban', 'La cuenta de origen'),
     destinationIban: requireIban(body, 'destinationIban', 'El IBAN de destino'),
     amount: requireMoney(body, 'amount', 'El monto'),
     detail: optionalString(body, 'detail', DETAIL_MAX, 'El detalle'),
-    destinationIdentification: optionalString(
+  };
+}
+
+/**
+ * Enrollment of a third party's account: its IBAN and the holder's identification, which the
+ * procedure requires when the account is of another entity. Fields are named as in the form.
+ */
+export function validateEnrollment(body) {
+  assertOnlyFields(body, ['destinationIban', 'destinationIdentification']);
+  return {
+    iban: requireIban(body, 'destinationIban', 'El IBAN de destino'),
+    identification: optionalString(
       body,
       'destinationIdentification',
       20,

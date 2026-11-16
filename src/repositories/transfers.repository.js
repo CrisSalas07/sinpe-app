@@ -73,16 +73,24 @@ export function transferBySinpe(
 
 export function transferByIban(
   { entityId, clientId },
-  { originIban, destinationIban, amount, detail, destinationIdentification },
+  { originIban, destinationIban, amount, detail },
 ) {
-  return callAndReadReceipt('CALL sp_transferir_iban(?, ?, ?, ?, ?, ?, ?)', [
+  return callAndReadReceipt('CALL sp_transferir_iban(?, ?, ?, ?, ?, ?)', [
     entityId,
     clientId,
     originIban,
     destinationIban,
     amount,
     detail,
-    destinationIdentification,
+  ]);
+}
+
+export async function enrollAccount({ entityId, clientId }, { iban, identification }) {
+  await pool.query('CALL sp_matricular_cuenta(?, ?, ?, ?)', [
+    entityId,
+    clientId,
+    iban,
+    identification,
   ]);
 }
 
@@ -101,14 +109,18 @@ export async function findRecipientByNumber(number) {
   return rows[0] ?? null;
 }
 
-export async function findRecipientByIban(iban) {
+/** Owner of an account, and whether it is the user's own or already enrolled by them. */
+export async function findRecipientByIban(iban, { entityId, clientId }) {
   const [rows] = await pool.query(
-    `SELECT c.nombres AS names, c.primer_apellido AS firstSurname, e.codigo AS entity
+    `SELECT c.nombres AS names, c.primer_apellido AS firstSurname, e.codigo AS entity,
+       cu.id_cliente = ? AS own,
+       EXISTS (SELECT 1 FROM cuenta_matriculada m
+               WHERE m.id_cliente = ? AND m.id_entidad = ? AND m.id_cuenta = cu.id_cuenta) AS enrolled
      FROM cuenta_iban cu
      JOIN cliente c ON c.id_cliente = cu.id_cliente
      JOIN entidad_financiera e ON e.id_entidad = cu.id_entidad
      WHERE cu.iban = ?`,
-    [iban],
+    [clientId, clientId, entityId, iban],
   );
   return rows[0] ?? null;
 }

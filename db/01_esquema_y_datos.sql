@@ -104,6 +104,18 @@ CREATE TABLE transferencia_sinpe (
     CONSTRAINT fk_ts_telefono_destino FOREIGN KEY (id_telefono_destino) REFERENCES telefono_cliente(id_telefono)
 );
 
+-- Cuentas de terceros que un cliente matriculo en su entidad: solo a estas puede transferir por IBAN.
+-- Es por (cliente, entidad), como la matricula de un banco; las cuentas propias no se matriculan.
+CREATE TABLE cuenta_matriculada (
+    id_cliente INT NOT NULL,
+    id_entidad INT NOT NULL,
+    id_cuenta INT NOT NULL,
+    fecha_matricula DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_cliente, id_entidad, id_cuenta),
+    CONSTRAINT fk_matricula_cliente_entidad FOREIGN KEY (id_cliente, id_entidad) REFERENCES cliente_entidad(id_cliente, id_entidad),
+    CONSTRAINT fk_matricula_cuenta FOREIGN KEY (id_cuenta) REFERENCES cuenta_iban(id_cuenta)
+);
+
 -- CATALOGO DE MONEDAS
 INSERT INTO moneda (codigo, descripcion) VALUES
     ('CRC','Colón costarricense'),
